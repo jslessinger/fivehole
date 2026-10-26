@@ -767,7 +767,7 @@ function renderNhlGame(id){
   const b2bTxt=[b2bA?`${A.name} played yesterday (back-to-back)`:'',b2bH?`${H.name} played yesterday (back-to-back)`:''].filter(Boolean).join(' · ');
   $('nhlGame').innerHTML=`<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
     <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
-    <h2>Goalies</h2><p class="sub">${N.msf==='on'?'<b>Expected</b> means MySportsFeeds lists him as the expected starter. ':''}<b>Confirmed</b> means he’s in the starting lineup or has started the game. <b>Projected</b> is Five Hole’s own pick from recent starts, back-to-backs and injuries, used when nothing firmer is available.</p>
+    <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
     <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
     <h2>Goalie game logs</h2><p class="sub">Each goalie’s last ${GLOG_N} appearances this season. The projected starter is shown first; switch goalies with the buttons.</p>
     <div id="glogs">${glogSection(g)}</div>

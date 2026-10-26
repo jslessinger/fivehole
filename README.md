@@ -62,28 +62,16 @@ copies aren't updating on a schedule:
 - **Or keep it but stop it:** old repository → **Actions** →
   **Update stats and publish site** → **⋯** (top right) → **Disable workflow**.
 
-Repository secrets don't copy over, so add `MSF_API_KEY` to `fivehole` again if
-you use MySportsFeeds (see below).
 
 ## NHL data
 
 The NHL board refreshes every hour. It uses the NHL's public web and stats APIs
 for standings, schedules, rosters, goalie stats and box scores, and ESPN's public
-injury and odds feeds. A goalie is **Confirmed** once he's in the starting lineup or has started
-the game, **Expected** when MySportsFeeds lists him as the likely starter, and
-**Projected** when Five Hole makes its own pick from recent starts, back-to-backs
-and injuries.
-
-### Expected and confirmed goalies (MySportsFeeds, optional)
-
-1. Create an account at mysportsfeeds.com and choose the free personal /
-   non-commercial option (check that NHL lineups are included).
-2. Copy your API key from your MySportsFeeds account page.
-3. In GitHub go to **Settings → Secrets and variables → Actions → New
-   repository secret**. Name it `MSF_API_KEY` and paste the key. GitHub keeps it
-   hidden; it never appears on the site.
-4. Run the workflow. Goalies listed by MySportsFeeds show as **Expected** or
-   **Confirmed**; everything else falls back to Five Hole's **Projected** pick.
+injury and odds feeds. A goalie is **Confirmed** when he's named the starter in the NHL's official
+game lineup (filed about 20-30 minutes before puck drop) or has started the game,
+**Expected** when ESPN lists him as the probable starter, and **Projected** when
+Five Hole makes its own pick from recent starts, back-to-backs and injuries.
+In the evening the NHL update runs every 10 minutes to catch official lineups.
 
 ### Odds
 
