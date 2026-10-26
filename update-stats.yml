@@ -1,0 +1,83 @@
+name: Update stats and publish site
+
+on:
+  schedule:
+    # Times are UTC. Every morning, plus extra runs around game days.
+    - cron: "0 11 * * *"      # daily, ~7 AM Eastern
+    - cron: "30 21 * * 0"     # Sunday after the early games
+    - cron: "30 1 * * 1"      # Sunday night after the late games
+    - cron: "30 5 * * 1"      # after Sunday Night Football
+    - cron: "30 5 * * 2"      # after Monday Night Football
+    - cron: "0 22 * * 3,4,5"  # after midweek injury reports
+    - cron: "15 * * * *"      # hourly: NHL scores, goalies and injuries
+  workflow_dispatch: {}        # "Run workflow" button on the Actions tab
+  push:
+    branches: [main]           # republish whenever you change the site
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fivehole
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pandas
+        run: pip install "pandas>=2.2,<3"
+
+      - name: Build NFL data (data.json)
+        if: github.event.schedule != '15 * * * *'
+        continue-on-error: true
+        run: python scripts/build_data.py
+
+      - name: Build NHL data (nhl.json)
+        continue-on-error: true
+        env:
+          MSF_API_KEY: ${{ secrets.MSF_API_KEY }}
+        run: python scripts/build_nhl.py
+
+      - name: Save the new stats to the repository
+        run: |
+          git add -N nhl.json 2>/dev/null || true
+          if git diff --quiet -- data.json nhl.json; then
+            echo "No changes to the stats."
+          else
+            git config user.name "fivehole-bot"
+            git config user.email "fivehole-bot@users.noreply.github.com"
+            git add data.json
+            [ -f nhl.json ] && git add nhl.json
+            git commit -m "Update stats $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      - name: Package the site
+        run: |
+          mkdir -p _site
+          cp index.html data.json _site/
+          [ -f nhl.json ] && cp nhl.json _site/ || true
+          [ -f CNAME ] && cp CNAME _site/ || true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

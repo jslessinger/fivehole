@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Five Hole: every goalie has one, so does every defense. NHL matchups with projected goalies and NFL yards allowed by position for every defense, weekly matchups, best bets and injury-aware depth charts.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Five Hole — find the gap in every matchup</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cg%20transform%3D%22translate%2840%208%29%20rotate%2816%29%22%3E%3Cpath%20fill%3D%22%231C1B1F%22%20d%3D%22M-12%200h24c4%200%207%203%207%207v70c0%205-4%209-9%209h-20c-5%200-9-4-9-9V7c0-4%203-7%207-7z%22/%3E%3Cpath%20fill%3D%22%23F0EEEE%22%20d%3D%22M-16%2024h32v4h-32zM-16%2048h32v4h-32z%22/%3E%3C/g%3E%3Cg%20transform%3D%22translate%2860%208%29%20rotate%28-16%29%22%3E%3Cpath%20fill%3D%22%231C1B1F%22%20d%3D%22M-12%200h24c4%200%207%203%207%207v70c0%205-4%209-9%209h-20c-5%200-9-4-9-9V7c0-4%203-7%207-7z%22/%3E%3Cpath%20fill%3D%22%23F0EEEE%22%20d%3D%22M-16%2024h32v4h-32zM-16%2048h32v4h-32z%22/%3E%3C/g%3E%3Cellipse%20cx%3D%2250%22%20cy%3D%2287%22%20rx%3D%2211%22%20ry%3D%226%22%20fill%3D%22%23B3261E%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Archivo+Narrow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F7FA; --panel:#FFFFFF; --ink:#14181D; --muted:#5B6672; --line:#E1E7EE;
+  --turf:#2D4A6B; --turf-soft:#EDF2F8; --hot:#B3261E; --hot-soft:#FCECEA; --cold:#4A6382; --cold-soft:#E7EEF6;
+  --track:#E9EEF4; --shadow:0 4px 18px rgba(20,24,29,.07); --radius:14px;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E131A; --panel:#151C25; --ink:#E8EEF4; --muted:#8FA0B2; --line:#243040;
+    --turf:#8FB0D6; --turf-soft:#1A2431; --hot:#EF5A50; --hot-soft:#3A1D1C; --cold:#8FB0D6; --cold-soft:#1A2533;
+    --track:#1C2632; --shadow:0 4px 18px rgba(0,0,0,.35); --radius:14px; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E131A; --panel:#151C25; --ink:#E8EEF4; --muted:#8FA0B2; --line:#243040;
+    --turf:#8FB0D6; --turf-soft:#1A2431; --hot:#EF5A50; --hot-soft:#3A1D1C; --cold:#8FB0D6; --cold-soft:#1A2533;
+    --track:#1C2632; --shadow:0 4px 18px rgba(0,0,0,.35); --radius:14px; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo Narrow","Arial Narrow","Roboto Condensed",system-ui,sans-serif;font-size:16px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 24px 40px}
+@media (max-width:640px){.wrap{padding:16px 14px 32px}}
+h1,h2,.cond{font-family:"Graduate","Rockwell","Arial Black",serif}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+h1{font-size:clamp(1.9rem,5vw,2.8rem);font-weight:400;line-height:1.05;margin:0;letter-spacing:0}
+.src{color:var(--muted);font-size:.9rem;max-width:34ch;text-align:right}
+@media (max-width:640px){.src{text-align:left}}
+
+.pick{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:end;margin:18px 0 8px}
+.pick label{display:block;font-size:.9rem;color:var(--muted);margin-bottom:4px}
+select{width:100%;font:400 1.35rem "Graduate","Rockwell","Arial Black",serif;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px}
+select:focus-visible,button:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+.vs{font:400 1.4rem "Graduate","Rockwell","Arial Black",serif;color:var(--muted);padding-bottom:12px;text-align:center}
+.vs button{display:block;margin:4px auto 0;font:500 .85rem "Archivo Narrow","Arial Narrow",sans-serif}
+button{cursor:pointer;color:var(--ink);background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px;font:500 .9rem "Archivo Narrow","Arial Narrow",sans-serif}
+button:hover{border-color:var(--ink)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 0}
+.bar .gap{flex:1}
+.note{color:var(--muted);font-size:.9rem}
+
+.headline{margin:24px 0 6px;font:400 clamp(1.2rem,3vw,1.65rem)/1.2 "Graduate","Rockwell","Arial Black",serif}
+.sub{color:var(--muted);margin:0 0 14px;max-width:none}
+
+.rows{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.rows .row:last-child{border-bottom:0}
+.row{display:grid;grid-template-columns:150px 1fr 190px;gap:16px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.row.best{background:var(--hot-soft);border-left:5px solid var(--hot);padding-left:13px}
+.row .name{font:400 1.3rem/1.1 "Graduate","Rockwell","Arial Black",serif}
+.row .name small{display:block;font:500 .85rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;margin-top:6px;font:600 .8rem "Archivo Narrow","Arial Narrow",sans-serif;padding:2px 8px;border-radius:4px}
+.t-attack{background:var(--hot);color:#fff}
+.t-lean{background:var(--hot-soft);color:var(--hot);border:1px solid var(--hot)}
+.t-neutral{background:var(--track);color:var(--muted)}
+.t-tough{background:var(--cold-soft);color:var(--cold);border:1px solid var(--cold)}
+.t-avoid{background:var(--cold);color:#fff}
+.row.best .t-lean{background:var(--panel)}
+.track{position:relative;height:30px;background:repeating-linear-gradient(90deg,var(--track) 0 calc(10% - 1px),var(--line) calc(10% - 1px) 10%);border-radius:3px}
+.track .fill{position:absolute;left:0;top:7px;bottom:7px;border-radius:0 3px 3px 0}
+.track .avg{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.track .avg::after{content:"NFL avg";position:absolute;top:-16px;left:-18px;font-size:.7rem;color:var(--muted);white-space:nowrap}
+.legend{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-top:4px;gap:8px}
+.num{text-align:right}
+.num .big{font:400 2rem/1 "Graduate","Rockwell","Arial Black",serif}
+.num .big span{font:600 .9rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted)}
+.num .delta{font-size:.9rem;font-weight:600}
+.up{color:var(--hot)} .down{color:var(--cold)}
+@media (max-width:720px){
+  .row{grid-template-columns:1fr auto;grid-template-areas:"n v" "t t"}
+  .row .name{grid-area:n}.row .num{grid-area:v}.row .viz{grid-area:t}
+  .pick{grid-template-columns:1fr}
+  .vs{padding:0}.vs button{display:inline-block;margin-left:8px}
+}
+
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:10px}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
+.pcard h3{margin:0 0 6px;font:400 1.1rem "Graduate","Rockwell","Arial Black",serif;display:flex;justify-content:space-between;gap:8px}
+.pcard ul{list-style:none;margin:0;padding:0}
+.pcard li{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:.95rem;border-top:1px dashed var(--line)}
+.pcard li:first-child{border-top:0}
+.pcard li b{font-weight:600}
+.pcard .hint{font-size:.82rem;color:var(--muted)}
+
+h2{font-size:1.45rem;font-weight:400;margin:32px 0 6px;line-height:1.15}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;min-width:560px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+#log th,#log td{text-align:right}
+#log th[rowspan],#log tbody td:nth-child(-n+2),#log tfoot td:first-child{text-align:left}
+#log th.grp{text-align:center;color:var(--ink);border-left:2px solid var(--line)}
+#log .gs{border-left:2px solid var(--line)}
+#log th.sect{font:400 1.05rem "Graduate","Rockwell","Arial Black",serif;background:var(--turf-soft);color:var(--ink)}
+#log .sect-rec{border-left:3px solid var(--ink)!important}
+th{font:600 .85rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted);background:var(--bg)}
+tfoot td{font-weight:700;border-bottom:0}
+td.hot{background:var(--hot-soft);color:var(--hot);font-weight:600}
+td.cold{color:var(--cold)}
+tr.sel td{background:var(--turf-soft);font-weight:700}
+tr.sel2 td{outline:1px solid var(--hot);outline-offset:-1px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.empty{padding:24px;color:var(--muted)}
+footer{margin-top:36px;color:var(--muted);font-size:.85rem;line-height:1.55;border-top:1px solid var(--line);padding-top:14px;max-width:none}
+@media (prefers-reduced-motion:no-preference){.track .fill{transition:width .35s ease}}
+
+.logh{font:400 1.25rem "Graduate","Rockwell","Arial Black",serif;margin:18px 0 8px}
+table.glog{min-width:600px}
+table.glog th:nth-child(n+5),table.glog td:nth-child(n+5){text-align:right}
+table.glog th:nth-child(3),table.glog td:nth-child(3),table.glog th:nth-child(4),table.glog td:nth-child(4){text-align:left}
+table.glog tr.gstart td{border-top:2px solid var(--line)}
+table.glog tbody tr:first-child td{border-top:0}
+table.glog tr.gtot td{font-weight:700;background:var(--bg)}
+table.glog td:nth-child(3){color:var(--muted);font-size:.9rem}
+table.glog tfoot td{background:var(--turf-soft)}
+
+.weekbar{display:flex;align-items:center;gap:12px;margin:22px 0 6px}
+.hometitle{margin:0;font-size:clamp(1.5rem,4vw,2rem)}
+.weekbar button{font-size:1.2rem;padding:2px 12px}
+.weekbar button:disabled{opacity:.35;cursor:default}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.game{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.game .gh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 16px 10px;border-bottom:1px solid var(--line);background:var(--turf-soft)}
+.game .gh b{font:400 1.5rem/1 "Graduate","Rockwell","Arial Black",serif}
+.game .gh span{color:var(--muted);font-size:.85rem;text-align:right}
+.side{display:block;width:100%;text-align:left;border:0;border-radius:0;border-top:1px solid var(--line);padding:10px 14px;background:transparent;font:inherit;color:var(--ink)}
+.side:first-of-type{border-top:0}
+.side:hover{background:var(--turf-soft)}
+.side .who{display:flex;justify-content:space-between;font:400 1.05rem "Graduate","Rockwell","Arial Black",serif}
+.side .who i{font-style:normal;color:var(--muted);font:500 .85rem "Archivo Narrow","Arial Narrow",sans-serif}
+.side .spots{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.side .spots .tag{margin:0}
+.back{margin:18px 0 0}
+
+header.top{align-items:center}
+.brand{display:inline-flex;align-items:center;gap:.25em;font:400 clamp(1.35rem,4vw,1.85rem)/1 "Graduate","Rockwell","Arial Black",serif;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.brand .mark{width:1.35em;height:1.35em;flex:none}
+.menu{display:flex;gap:4px;flex-wrap:wrap}
+.menu button{border:0;border-radius:8px;font:400 1.05rem "Graduate","Rockwell","Arial Black",serif;padding:6px 12px}
+.menu button[aria-current="page"]{background:var(--turf-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--hot)}
+.hero{padding:30px 0 4px;max-width:none}
+.hero h1{font-size:clamp(2rem,5.6vw,3.5rem);line-height:1.08;margin:0 0 16px}
+.lede{font-size:1.15rem;max-width:none;margin:0 0 8px}
+.hero .src{text-align:left;max-width:none}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:20px 0 8px}
+.tile{display:flex;flex-direction:column;gap:8px;text-align:left;border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;background:var(--panel);box-shadow:var(--shadow)}
+.tile:hover{border-color:var(--hot)}
+.tile .tt{font:400 1.9rem/1 "Graduate","Rockwell","Arial Black",serif}
+.tile .td{color:var(--muted);font-size:.95rem}
+.tile .td ol{margin:4px 0 0;padding-left:1.2em;color:var(--ink)}
+.tile .tc{font-weight:600;color:var(--hot);margin-top:auto}
+.softest{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.soft{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--hot);border-radius:6px;padding:10px 12px}
+.soft .k{font-size:.85rem;color:var(--muted)}
+.soft .t{font:400 1.25rem/1.15 "Graduate","Rockwell","Arial Black",serif}
+.soft .v{font-size:.9rem}
+.bets{list-style:none;margin:8px 0 0;padding:0 10px;counter-reset:b;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.bets .bet:last-child{border-bottom:0}
+.bet{counter-increment:b;display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;padding:14px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+.bet:hover{background:var(--turf-soft)}
+.bet::before{content:counter(b);font:400 2rem/1 "Graduate","Rockwell","Arial Black",serif;color:var(--muted);text-align:center}
+.bet:nth-child(-n+3)::before{color:var(--hot)}
+.bet .p{font:400 1.3rem/1.1 "Graduate","Rockwell","Arial Black",serif}
+.bet .p small{font:500 .9rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted)}
+.bet .why{font-size:.92rem;color:var(--muted);margin-top:3px}
+.bet .why b{color:var(--ink);font-weight:600}
+.bet .proj{text-align:right}
+.bet .proj .big{font:400 1.8rem/1 "Graduate","Rockwell","Arial Black",serif}
+.bet .proj .big span{font:600 .85rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted)}
+.bet .tag{margin:4px 0 0}
+@media (max-width:560px){.bet{grid-template-columns:36px 1fr}.bet .proj{grid-column:2;text-align:left}}
+
+.st{display:inline-block;font:700 .7rem "Archivo Narrow","Arial Narrow",sans-serif;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:.1em;background:var(--cold-soft);color:var(--cold);border:1px solid var(--cold)}
+.st-out,.st-ir,.st-doubtful,.st-traded,.st-released,.st-inactive{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.st-questionable{background:#F5C044;color:#3A2A00;border-color:#C99A1A}
+li.outp{opacity:.55}
+li.outp b{text-decoration:line-through}
+.pcard.dinj{margin-top:14px}
+.pcard.dinj ul li{align-items:center}
+.why.inj{color:var(--ink)}
+.why.inj::before{content:"+ ";color:var(--hot);font-weight:700}
+
+.dd{position:relative}
+.ddb[aria-current="page"]{background:var(--turf-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--hot)}
+.ddm{position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:2px}
+.ddm[hidden]{display:none}
+@media (max-width:640px){.ddm{left:0;right:auto}}
+.ddm button{border:0;border-radius:5px;text-align:left;font:400 1.05rem "Graduate","Rockwell","Arial Black",serif;padding:8px 10px;width:100%}
+.ddm button:hover,.ddm button[aria-current="page"]{background:var(--hot-soft);color:var(--hot)}
+.tile .lg{font:700 .78rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.08em;color:var(--hot)}
+.nhl-game .tm{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 14px;border-top:1px solid var(--line)}
+.nhl-game .tm:first-of-type{border-top:0}
+.nhl-game .tn{font:400 1.15rem/1.1 "Graduate","Rockwell","Arial Black",serif}
+.nhl-game .tr{color:var(--muted);font-size:.85rem;text-align:right}
+.nhl-game .gl{grid-column:1/-1;font-size:.9rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nhl-game .gl .hint{font-size:.82rem}
+.chip{display:inline-block;font:700 .72rem "Archivo Narrow","Arial Narrow",sans-serif;padding:1px 6px;border-radius:3px;letter-spacing:.02em}
+.chip-confirmed{background:var(--ink);color:var(--bg)}
+.chip-projected{border:1px solid var(--muted);color:var(--muted)}
+.chip-expected{border:1px solid var(--hot);color:var(--hot);background:var(--hot-soft)}
+.chip-none{border:1px dashed var(--muted);color:var(--muted)}
+.nhl-game{cursor:pointer;text-align:left}
+.nhl-game:hover{border-color:var(--hot)}
+.ngh{margin:20px 0 4px;font:400 clamp(1.35rem,3.8vw,1.95rem)/1.15 "Graduate","Rockwell","Arial Black",serif}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:720px){.cols{grid-template-columns:1fr}}
+.cols>*{min-width:0}
+.gcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.gcard h3{margin:0 0 8px;font:400 1.2rem "Graduate","Rockwell","Arial Black",serif;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.gcard h3 span{font:500 .85rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted)}
+.starter{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.starter b{font:400 1.6rem/1.1 "Graduate","Rockwell","Arial Black",serif}
+.gline{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 6px;text-align:center}
+.gline div{background:var(--turf-soft);border-radius:10px;padding:6px 2px}
+.gline small{display:block;font-size:.72rem;color:var(--muted)}
+.gline strong{font:400 1.2rem "Graduate","Rockwell","Arial Black",serif}
+.others{list-style:none;margin:8px 0 0;padding:0;font-size:.9rem}
+.others li{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px dashed var(--line)}
+table.cmp{min-width:0}
+table.cmp td:nth-child(2),table.cmp td:nth-child(3),table.cmp th:nth-child(2),table.cmp th:nth-child(3){text-align:right;width:28%}
+table.cmp td.better{color:var(--hot);font-weight:700}
+table.cmp tr.grp td{background:var(--bg);font:700 .8rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+table.cmp tr.key td{background:var(--hot-soft)}
+table.l7 td:nth-child(n+3),table.l7 th:nth-child(n+3){text-align:right}
+table.l7{min-width:420px}
+.res-W{color:var(--hot);font-weight:700}
+.res-L,.res-OTL{color:var(--muted);font-weight:700}
+.injl{list-style:none;margin:0;padding:0}
+.injl li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:.92rem}
+.injl li:first-child{border-top:0}
+.injl .st{white-space:nowrap}
+
+.nhl-game.gold{border:2px solid #C9A227;box-shadow:0 0 0 3px rgba(201,162,39,.18),var(--shadow)}
+.nhl-game.gold .gh{background:rgba(201,162,39,.14)}
+.chip-b2b{background:#C9A227;color:#1d1600;font-size:.66rem;vertical-align:.15em}
+.goldnote{display:block;font-size:.9rem;color:var(--ink);background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.45);border-radius:10px;padding:8px 12px;margin:6px 0 14px}
+.goldswatch{width:22px;height:14px;border:2px solid #C9A227;border-radius:4px;display:inline-block;vertical-align:-2px;margin-right:8px}
+table.odds{min-width:560px}
+table.odds th,table.odds td{text-align:center}
+table.odds th:first-child,table.odds td:first-child{text-align:left}
+table.odds .og{border-left:1px solid var(--line)}
+table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbody td:nth-child(6),table.odds tbody td:nth-child(8){border-left:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a href="#home" class="brand" data-view="home"><svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(40 8) rotate(16)"><path fill="currentColor" d="M-12 0h24c4 0 7 3 7 7v70c0 5-4 9-9 9h-20c-5 0-9-4-9-9V7c0-4 3-7 7-7z"/><path fill="var(--bg)" d="M-16 24h32v4h-32zM-16 48h32v4h-32z"/></g><g transform="translate(60 8) rotate(-16)"><path fill="currentColor" d="M-12 0h24c4 0 7 3 7 7v70c0 5-4 9-9 9h-20c-5 0-9-4-9-9V7c0-4 3-7 7-7z"/><path fill="var(--bg)" d="M-16 24h32v4h-32zM-16 48h32v4h-32z"/></g><ellipse cx="50" cy="87" rx="11" ry="6" fill="var(--hot)"/></svg><span>Five Hole</span></a>
+    <nav class="menu" aria-label="Main">
+      <button type="button" data-view="home">Home</button>
+      <div class="dd" data-group="nhl">
+        <button type="button" class="ddb" aria-expanded="false" aria-haspopup="true">NHL <span aria-hidden="true">▾</span></button>
+        <div class="ddm" hidden>
+          <button type="button" data-view="nhl">The Crease</button>
+        </div>
+      </div>
+      <div class="dd" data-group="nfl">
+        <button type="button" class="ddb" aria-expanded="false" aria-haspopup="true">NFL <span aria-hidden="true">▾</span></button>
+        <div class="ddm" hidden>
+          <button type="button" data-view="board">The Gridiron</button>
+          <button type="button" data-view="bets">Best Bets</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <p id="loading" class="sub" style="margin-top:32px">Loading stats…</p>
+
+  <section id="landView" hidden>
+    <div class="hero">
+      <h1>Every goalie has one.<br>So does every defense.</h1>
+      <p class="lede">Five Hole finds the gap before the game starts. For the NHL, it lines up each night’s teams with the goalie expected in net, recent form, and home and road splits. For the NFL, it tracks yards allowed by position for all 32 defenses and matches them against every offense on the schedule.</p>
+      <p class="src" id="src"></p>
+    </div>
+    <div class="tiles">
+      <button type="button" class="tile" data-view="nhl">
+        <span class="lg">NHL</span>
+        <span class="tt">The Crease</span>
+        <span class="td" id="tileNhl">Tonight’s games with projected goalies, recent form and team splits.</span>
+        <span class="tc">Open The Crease ›</span>
+      </button>
+      <button type="button" class="tile" data-view="board">
+        <span class="lg">NFL</span>
+        <span class="tt">The Gridiron</span>
+        <span class="td" id="tileBoard"></span>
+        <span class="tc">Open The Gridiron ›</span>
+      </button>
+      <button type="button" class="tile tile-hot" data-view="bets">
+        <span class="lg">NFL</span>
+        <span class="tt">Best Bets</span>
+        <span class="td" id="tileBets"></span>
+        <span class="tc">See all best bets ›</span>
+      </button>
+    </div>
+  </section>
+
+  <section id="betsView" hidden>
+    <h2 id="betsTitle" class="hometitle" style="margin-top:22px">Best bets</h2>
+    <p class="sub">This week’s most lopsided position matchups across every game still to be played. Each one pairs a defense that gives up far more than average at a spot with the opposing player who fills it. These are matchup leans built from yards allowed, not betting odds.</p>
+    <div class="seg" id="betSeg"></div>
+    <ol class="bets" id="bets"></ol>
+  </section>
+
+  <section id="homeView" hidden>
+    <div class="weekbar">
+      <button type="button" id="wkPrev" aria-label="Previous week">‹</button>
+      <h2 id="homeTitle" class="hometitle">Week</h2>
+      <button type="button" id="wkNext" aria-label="Next week">›</button>
+    </div>
+    <p class="sub">Pick a side to open the full matchup. Each line shows that offense’s softest spots against the other team’s defense, by yards allowed compared with the NFL average this season.</p>
+    <div class="games" id="games"></div>
+  </section>
+
+  <section id="detailView" hidden>
+  <button type="button" id="back" class="back">‹ The Gridiron · Week <span id="backWk"></span></button>
+
+  <div class="pick">
+    <div><label for="defSel">Defense</label><select id="defSel"></select></div>
+    <div class="vs">vs<button id="swap" type="button" title="Swap sides">Swap sides</button></div>
+    <div><label for="offSel">Opposing offense</label><select id="offSel"></select></div>
+  </div>
+  <div class="bar">
+    <button type="button" id="wk">Use next scheduled opponent</button>
+    <span class="note" id="wkNote"></span>
+    <span class="gap"></span>
+    <span class="note">Sample:</span>
+    <button type="button" data-win="season" aria-pressed="true">Season</button>
+    <button type="button" data-win="l3" aria-pressed="false">Last 3 games</button>
+  </div>
+
+  <p class="headline" id="headline"></p>
+  <p class="sub" id="subline"></p>
+  <div class="rows" id="rows"></div>
+
+  <h2 id="plTitle">Who benefits</h2>
+  <p class="sub">The opposing offense’s top producers at each position, season per-game yards, with this week’s injury report. Players who are out, doubtful or on injured reserve are greyed out, and the next man up takes their role.</p>
+  <div class="players" id="players"></div>
+  <div class="pcard dinj" id="dinj"></div>
+
+  <h2 id="wkTitle">Defense game log</h2>
+  <p class="sub">The summary shows each position group’s totals per game; the two tables under it break those totals out by player. Highlighted yardage is at least 20% above the league per-game average for that group.</p>
+  <h3 class="logh">Game totals by position</h3>
+  <div class="tablewrap"><table id="log"></table></div>
+  <h3 class="logh">Rushing allowed, by player</h3>
+  <div class="seg" id="segRu"></div>
+  <div class="tablewrap"><table id="logRu" class="glog"></table></div>
+  <h3 class="logh">Receiving allowed, by player</h3>
+  <div class="seg" id="segRe"></div>
+  <div class="tablewrap"><table id="logRe" class="glog"></table></div>
+
+  <h2>All 32 defenses</h2>
+  <p class="sub">Ranked by yards allowed per game, most generous first. Your two teams are marked.</p>
+  <div class="seg" id="seg"></div>
+  <div class="tablewrap"><table id="league"></table></div>
+
+  </section>
+
+  <section id="nhlBoardView" hidden>
+    <h2 class="hometitle" style="margin-top:22px">The Crease</h2>
+    <p class="sub" id="nhlSub">Pick a game for the full breakdown: projected goalies, the last seven games, home and road splits, special teams and injuries.</p>
+    <div class="seg" id="nhlDays"></div>
+    <p class="goldnote" id="nhlLegend" hidden><span class="goldswatch"></span>Gold border: the home team is rested and the road team is on the second night of a back-to-back. <span class="chip chip-b2b">B2B</span> marks any team that played yesterday.</p>
+    <div class="games" id="nhlGames"><p class="note">Loading hockey data…</p></div>
+  </section>
+
+  <section id="nhlGameView" hidden>
+    <button type="button" class="back" data-view="nhl">‹ Back to The Crease</button>
+    <div id="nhlGame"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+(async()=>{
+let D;
+try{
+  const res=await fetch('data.json',{cache:'no-cache'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  D=await res.json();
+}catch(err){
+  document.getElementById('loading').innerHTML='Couldn’t load the stats file (data.json). If you just set up the site, run the “Update stats” workflow once from the Actions tab, then reload.';
+  return;
+}
+document.getElementById('loading').remove();
+const NAMES={ARI:'Arizona Cardinals',ATL:'Atlanta Falcons',BAL:'Baltimore Ravens',BUF:'Buffalo Bills',CAR:'Carolina Panthers',CHI:'Chicago Bears',CIN:'Cincinnati Bengals',CLE:'Cleveland Browns',DAL:'Dallas Cowboys',DEN:'Denver Broncos',DET:'Detroit Lions',GB:'Green Bay Packers',HOU:'Houston Texans',IND:'Indianapolis Colts',JAX:'Jacksonville Jaguars',KC:'Kansas City Chiefs',LA:'Los Angeles Rams',LAC:'Los Angeles Chargers',LV:'Las Vegas Raiders',MIA:'Miami Dolphins',MIN:'Minnesota Vikings',NE:'New England Patriots',NO:'New Orleans Saints',NYG:'New York Giants',NYJ:'New York Jets',PHI:'Philadelphia Eagles',PIT:'Pittsburgh Steelers',SEA:'Seattle Seahawks',SF:'San Francisco 49ers',TB:'Tampa Bay Buccaneers',TEN:'Tennessee Titans',WAS:'Washington Commanders'};
+const nick=t=>NAMES[t].split(' ').slice(-1)[0];
+const TEAMS=Object.keys(NAMES).sort((a,b)=>NAMES[a].localeCompare(NAMES[b]));
+const ROWS=[
+  {k:'rbRush',label:'RB rushing',y:0,c:1,cl:'carries',td:2,pos:'RB',stat:'ry'},
+  {k:'rbRec',label:'RB receiving',y:3,c:4,cl:'catches',td:5,pos:'RB',stat:'cy'},
+  {k:'wrRec',label:'WR receiving (all)',y:6,c:7,cl:'catches',td:9,pos:'WR',stat:'cy',board:false,log:false},
+  {k:'wr1',label:'WR1',sub:'Depth chart No. 1',y:15,c:16,cl:'catches',td:18,pos:'WR'},
+  {k:'wr2',label:'WR2',sub:'Depth chart No. 2',y:19,c:20,cl:'catches',td:22,pos:'WR'},
+  {k:'wr3',label:'WR3 and beyond',sub:'No. 3 and below',y:23,c:24,cl:'catches',td:26,pos:'WR'},
+  {k:'teRec',label:'TE receiving',y:10,c:11,cl:'catches',td:13,pos:'TE',stat:'cy'},
+  {k:'qbRush',label:'QB rushing',y:14,pos:'QB',stat:'ry'}
+];
+const S={def:null,off:null,win:'season',lg:'rbRush'};
+const $=id=>document.getElementById(id);
+const fmt=(n,d=1)=>(Math.round(n*10**d)/10**d).toFixed(d);
+const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
+
+function weeksOf(side,t,win){
+  const w=Object.keys(D[side][t]||{}).map(Number).sort((a,b)=>a-b);
+  return win==='l3'?w.slice(-3):w;
+}
+function per(side,t,idx,win){
+  const w=weeksOf(side,t,win); if(!w.length) return 0;
+  return w.reduce((s,k)=>s+D[side][t][k][idx],0)/w.length;
+}
+let CACHE={};
+function table(side,idx){
+  const key=side+idx+S.win; if(CACHE[key]) return CACHE[key];
+  const vals=TEAMS.map(t=>({t,v:per(side,t,idx,S.win)}));
+  const sorted=[...vals].sort((a,b)=>b.v-a.v);
+  const rank={}; sorted.forEach((o,i)=>rank[o.t]=i+1);
+  const avg=vals.reduce((s,o)=>s+o.v,0)/vals.length;
+  const max=sorted[0].v;
+  return CACHE[key]={vals:Object.fromEntries(vals.map(o=>[o.t,o.v])),rank,avg,max,sorted};
+}
+const adj=f=>1+(f-1)/2;
+function grade(f){
+  f=Math.round(f*100)/100;
+  if(f>=1.2) return ['attack','Attack'];
+  if(f>=1.07) return ['lean','Lean on it'];
+  if(f>0.93) return ['neutral','Neutral'];
+  if(f>0.8) return ['tough','Tough'];
+  return ['avoid','Avoid'];
+}
+function oppOfWeek(t,w){const g=D.schedule.find(s=>s[0]===w&&(s[2]===t||s[3]===t)); if(!g) return '—'; return g[2]===t?'@'+g[3]:'vs '+g[2];}
+function nextGame(t){return D.schedule.find(s=>s[4]==null&&(s[2]===t||s[3]===t));}
+
+function render(){
+  const {def,off}=S;
+  const games=weeksOf('def',def,S.win).length;
+  $('headline').textContent=`${NAMES[off]} offense vs ${NAMES[def]} defense`;
+  const results=ROWS.filter(r=>r.board!==false).map(r=>{
+    const T=table('def',r.y), O=table('off',r.y);
+    const d=T.vals[def], a=T.avg, o=O.vals[off];
+    const f=a>0?d/a:1;
+    return {r,d,a,o,f,exp:o*adj(f),drank:T.rank[def],orank:O.rank[off],max:Math.max(T.max,1)};
+  });
+  const order=[...results].sort((x,y)=>y.f-x.f);
+  const best=order[0].f>=1.07?order[0]:null;
+  $('subline').textContent=(best?`Best matchup: ${best.r.label}. The ${nick(def)} allow ${fmt(best.d)} yards a game there, ${Math.round((best.f-1)*100)}% above the NFL average. `:`No position here is clearly soft. `)+`Rows are sorted from softest to toughest. Based on ${games} game${games===1?'':'s'} for this defense.`;
+  $('rows').innerHTML=order.map(x=>{
+    const [cls,lab]=grade(x.f); const delta=x.exp-x.o;
+    const col=x.f>=1.07?'var(--hot)':x.f<=0.93?'var(--cold)':'var(--muted)';
+    return `<div class="row${x===best?' best':''}">
+      <div class="name">${x.r.label}<small>${x.r.sub?x.r.sub+' · ':''}Allows ${ord(x.drank)} most</small><span class="tag t-${cls}">${lab}</span></div>
+      <div class="viz">
+        <div class="track" role="img" aria-label="${nick(def)} allow ${fmt(x.d)} ${x.r.label} yards per game; NFL average ${fmt(x.a)}">
+          <div class="fill" style="width:${Math.min(100,x.d/x.max*100)}%;background:${col}"></div>
+          <div class="avg" style="left:${x.a/x.max*100}%"></div>
+        </div>
+        <div class="legend"><span>${nick(def)} allow <b>${fmt(x.d)}</b> yds/g (avg ${fmt(x.a)})</span><span>${nick(off)} gain ${fmt(x.o)} yds/g · ${ord(x.orank)} in NFL</span></div>
+      </div>
+      <div class="num"><div class="big">${Math.round(x.exp)}<span> yds expected</span></div>
+        <div class="delta ${delta>=0?'up':'down'}">${delta>=0?'+':'−'}${fmt(Math.abs(delta))} vs their usual</div></div>
+    </div>`;}).join('');
+
+  // players
+  $('plTitle').textContent=`Who benefits on the ${nick(off)}`;
+  const byK=Object.fromEntries(results.map(x=>[x.r.k,x]));
+  const RL=roles(off);
+  const cards=[{pos:'RB',f:(byK.rbRush.f+byK.rbRec.f)/2},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbRush.f}];
+  $('players').innerHTML=cards.map(x=>{
+    const pos=x.pos; const list=RL.lists[pos]; const [cls,lab]=pos==='WR'?['','']:grade(x.f);
+    const rowsH=list.length?list.slice(0,pos==='WR'?5:3).map(p=>{const [n,g,ry,cy,c,rec,tg]=p.p;
+      const st=stTag(p);
+      if(pos==='WR'){const rk=p.role;const gx=rk?grade(byK[rk].f):null;
+        return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}<br><span class="hint">${rk?ROLE_LABEL[rk]:p.out?'Not playing':'Depth'} · ${fmt(cy/g)} yds/g · ${tg} tgts</span></span>${gx&&!p.out?`<span class="tag t-${gx[0]}" style="margin:0;align-self:center">${gx[1]}</span>`:''}</li>`;}
+      const main=pos==='QB'?`${fmt(ry/g)} rush yds/g`:pos==='RB'?`${fmt(ry/g)} rush · ${fmt(cy/g)} rec`:`${fmt(cy/g)} yds/g · ${tg} tgts`;
+      return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}</span><span>${main}</span></li>`}).join(''):'<li class="hint">No production recorded</li>';
+    return `<div class="pcard"><h3>${pos==='RB'?'Running backs':pos==='WR'?'Wide receivers by depth chart':pos==='TE'?'Tight ends':'Quarterbacks'} ${lab?`<span class="tag t-${cls}" style="margin:0">${lab}</span>`:''}</h3><ul>${rowsH}</ul></div>`;
+  }).join('');
+  const DI=(D.dinj[def]||[]);
+  $('dinj').innerHTML=DI.length?`<h3>${nick(def)} defense injury report <span class="hint">Week ${D.injWeek}</span></h3><ul>${DI.map(x=>`<li><span><b>${x[0]}</b> <span class="hint">${x[1]}${x[4]?' · '+x[4]:''}</span></span><span class="st st-${x[3].toLowerCase()}">${x[3]}</span></li>`).join('')}</ul>`:`<h3>${nick(def)} defense injury report</h3><p class="hint" style="margin:0">No defensive players listed for Week ${D.injWeek}.</p>`;
+
+  // game logs
+  $('wkTitle').textContent=`${nick(def)} defense game log`;
+  renderSummary();
+  renderLogs();
+  renderLeague();
+}
+function renderSummary(){
+  const def=S.def, wks=weeksOf('def',def,'season'), fw=weeksOf('def',def,S.win), lw=new Set(fw);
+  if(!wks.length){$('log').innerHTML='<tbody><tr><td class="empty">No games recorded yet.</td></tr></tbody>';return;}
+  const isRush=r=>r.k==='rbRush'||r.k==='qbRush';
+  const all=ROWS.filter(r=>r.log!==false);
+  const LR=[...all.filter(isRush),...all.filter(r=>!isRush(r))];
+  const nRush=LR.filter(isRush).length;
+  const short=r=>({rbRush:'RB',qbRush:'QB',rbRec:'RB',teRec:'TE',wr3:'WR3+'})[r.k]||r.label;
+  const cnt=r=>r.k==='qbRush'?27:r.c;
+  const cols=r=>isRush(r)?['Att','Yds','Y/A']:['Rec','Yds','Y/R'];
+  const avgs=LR.map(r=>table('def',r.y).avg);
+  const rate=(y,n)=>n?fmt(y/n):'—';
+  const sc=i=>i===nRush?' sect-rec':'';
+  let h=`<thead><tr><th rowspan="3">Week</th><th rowspan="3">Opponent</th><th colspan="${nRush*3}" class="grp sect">Rushing</th><th colspan="${(LR.length-nRush)*3}" class="grp sect sect-rec">Receiving</th></tr><tr>`+LR.map((r,i)=>`<th colspan="3" class="grp${sc(i)}">${short(r)}</th>`).join('')+'</tr><tr>'+LR.map((r,i)=>cols(r).map((c,j)=>`<th class="num${j===0?' gs'+sc(i):''}">${c}</th>`).join('')).join('')+'</tr></thead><tbody>';
+  h+=wks.map(w=>{const v=D.def[def][w];return `<tr${lw.has(w)&&S.win==='l3'?' class="sel2"':''}><td>${w}</td><td>${oppOfWeek(def,w)}</td>`+LR.map((r,i)=>{const y=v[r.y],n=v[cnt(r)]||0;const c=y>=avgs[i]*1.2?'hot':y<=avgs[i]*0.8?'cold':'';
+    const extra=r.td!=null&&v[r.td]?` <small>${v[r.td]} TD</small>`:'';return `<td class="gs${sc(i)}">${n}</td><td class="${c}">${y}${extra}</td><td>${rate(y,n)}</td>`}).join('')+'</tr>'}).join('');
+  const tot=idx=>fw.reduce((s,k)=>s+(D.def[def][k][idx]||0),0), g=fw.length||1;
+  h+=`</tbody><tfoot><tr><td colspan="2">Per game${S.win==='l3'?' (last 3)':''}</td>`+LR.map((r,i)=>{const y=tot(r.y),n=tot(cnt(r));return `<td class="gs${sc(i)}">${fmt(n/g)}</td><td>${fmt(y/g)}</td><td>${rate(y,n)}</td>`}).join('')+'</tr></tfoot>';
+  $('log').innerHTML=h;
+}
+const LOGF={ru:'All',re:'All'};
+function renderLogs(){
+  const def=S.def, wks=weeksOf('def',def,S.win);
+  const avgRow=k=>table('def',ROWS.find(r=>r.k===k).y).avg;
+  const rate=(y,n)=>n?fmt(y/n):'—';
+  const opts={ru:['All','RB','QB'],re:['All','RB','WR1','WR2','WR3+','TE']};
+  ['ru','re'].forEach(s=>{$(s==='ru'?'segRu':'segRe').innerHTML=opts[s].map(o=>`<button type="button" data-logf="${s}:${o}" aria-pressed="${LOGF[s]===o}">${o==='All'?'All players':o}</button>`).join('');});
+  if(!wks.length){$('logRu').innerHTML=$('logRe').innerHTML='<tbody><tr><td class="empty">No games recorded yet.</td></tr></tbody>';return;}
+  const keyRu={RB:'rbRush',QB:'qbRush'}, keyRe={RB:'rbRec',WR1:'wr1',WR2:'wr2','WR3+':'wr3',TE:'teRec'};
+  // rushing
+  let ru='<thead><tr><th>Week</th><th>Opponent</th><th>Pos</th><th>Player</th><th>Att</th><th>Yds</th><th>Y/A</th><th>TD</th></tr></thead><tbody>';
+  const sR={RB:[0,0,0],QB:[0,0,0]};
+  wks.forEach(w=>{
+    const all=((D.logr[def]||{})[w]||{}).ru||[]; const rows=all.filter(p=>LOGF.ru==='All'||p[1]===LOGF.ru);
+    const t=rows.reduce((a,p)=>[a[0]+p[2],a[1]+p[3],a[2]+p[4]],[0,0,0]);
+    all.forEach(p=>{const z=sR[p[1]];z[0]+=p[2];z[1]+=p[3];z[2]+=p[4];});
+    const hot=LOGF.ru!=='All'&&t[1]>=avgRow(keyRu[LOGF.ru])*1.2;
+    ru+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${rate(p[3],p[2])}</td><td>${p[4]||''}</td></tr>`).join('')
+      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td class="${hot?'hot':''}">${t[1]}</td><td>${rate(t[1],t[0])}</td><td>${t[2]||''}</td></tr>`;
+  });
+  const g=wks.length;
+  const fr=(lab,z)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${rate(z[1],z[0])}</td><td>${fmt(z[2]/g)}</td></tr>`;
+  ru+='</tbody><tfoot>'+(LOGF.ru==='All'?['RB','QB']:[LOGF.ru]).map(k=>fr(`${k} per game${S.win==='l3'?' (last 3)':''}`,sR[k])).join('')+'</tfoot>';
+  $('logRu').innerHTML=ru;
+  // receiving
+  let re='<thead><tr><th>Week</th><th>Opponent</th><th>Role</th><th>Player</th><th>Tgt</th><th>Rec</th><th>Yds</th><th>Y/R</th><th>TD</th></tr></thead><tbody>';
+  const sE={}; Object.keys(keyRe).forEach(k=>sE[k]=[0,0,0,0]);
+  wks.forEach(w=>{
+    const all=((D.logr[def]||{})[w]||{}).re||[]; const rows=all.filter(p=>LOGF.re==='All'||p[1]===LOGF.re);
+    const t=rows.reduce((a,p)=>[a[0]+p[2],a[1]+p[3],a[2]+p[4],a[3]+p[5]],[0,0,0,0]);
+    all.forEach(p=>{const z=sE[p[1]];for(let j=0;j<4;j++)z[j]+=p[j+2];});
+    const hot=LOGF.re!=='All'&&t[2]>=avgRow(keyRe[LOGF.re])*1.2;
+    re+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td><td>${rate(p[4],p[3])}</td><td>${p[5]||''}</td></tr>`).join('')
+      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td>${t[1]}</td><td class="${hot?'hot':''}">${t[2]}</td><td>${rate(t[2],t[1])}</td><td>${t[3]||''}</td></tr>`;
+  });
+  const fe=(lab,z)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${fmt(z[2]/g)}</td><td>${rate(z[2],z[1])}</td><td>${fmt(z[3]/g)}</td></tr>`;
+  re+='</tbody><tfoot>'+(LOGF.re==='All'?Object.keys(keyRe):[LOGF.re]).map(k=>fe(`${k} per game${S.win==='l3'?' (last 3)':''}`,sE[k])).join('')+'</tfoot>';
+  $('logRe').innerHTML=re;
+}
+function renderLeague(){
+  const r=ROWS.find(x=>x.k===S.lg); const T=table('def',r.y);
+  $('seg').innerHTML=ROWS.map(x=>`<button type="button" data-lg="${x.k}" aria-pressed="${x.k===S.lg}">${x.label}</button>`).join('');
+  $('league').innerHTML='<thead><tr><th>Rank</th><th>Defense</th><th>Yds/g allowed</th><th>vs avg</th>'+(r.c!=null?`<th>${r.cl}/g</th>`:'')+'<th>TDs</th></tr></thead><tbody>'+
+    T.sorted.map((o,i)=>{const w=weeksOf('def',o.t,S.win);const sum=idx=>w.reduce((s,k)=>s+D.def[o.t][k][idx],0);
+      const pct=Math.round((o.v/T.avg-1)*100);
+      return `<tr class="${o.t===S.def?'sel':''}${o.t===S.off?' sel2':''}"><td>${i+1}</td><td>${NAMES[o.t]}${o.t===S.def?' · your defense':''}${o.t===S.off?' · opponent':''}</td><td>${fmt(o.v)}</td><td class="${pct>=10?'hot':pct<=-10?'cold':''}">${pct>0?'+':''}${pct}%</td>${r.c!=null?`<td>${fmt(w.length?sum(r.c)/w.length:0)}</td>`:''}<td>${r.td!=null?sum(r.td):'—'}</td></tr>`}).join('')+'</tbody>';
+}
+
+const fmtDay=(d,t)=>{const dt=new Date(d+'T12:00:00');let s=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});if(t){let [H,M]=t.split(':').map(Number);s+=` · ${(H%12)||12}:${String(M).padStart(2,'0')} ${H<12?'AM':'PM'} ET`;}return s;};
+function softSpots(def,off){
+  return ROWS.filter(r=>r.board!==false).map(r=>{const T=tableFor('def',r.y,'season');const a=T.avg;const f=a>0?T.vals[def]/a:1;return {r,f};}).sort((x,y)=>y.f-x.f);
+}
+function tableFor(side,idx,win){const keep=S.win;S.win=win;const t=table(side,idx);S.win=keep;return t;}
+const WEEKS=[...new Set(D.schedule.map(s=>s[0]))].sort((a,b)=>a-b);
+let HW=(D.schedule.find(s=>s[4]==null)||D.schedule[D.schedule.length-1])[0];
+function sideBtn(off,def){
+  const sp=softSpots(def,off).slice(0,2).filter(x=>x.f>=1.07);
+  const tags=sp.length?sp.map(x=>{const [c,l]=grade(x.f);return `<span class="tag t-${c}">${x.r.label} +${Math.round((x.f-1)*100)}%</span>`}).join(''):'<span class="tag t-neutral">No soft spots</span>';
+  return `<button type="button" class="side" data-def="${def}" data-off="${off}"><span class="who">${nick(off)} offense <i>vs ${nick(def)} D ›</i></span><span class="spots">${tags}</span></button>`;
+}
+function renderHome(){
+  $('homeTitle').textContent=`The Gridiron · Week ${HW}`;
+  $('wkPrev').disabled=HW<=WEEKS[0];$('wkNext').disabled=HW>=WEEKS[WEEKS.length-1];
+  const gs=D.schedule.filter(s=>s[0]===HW);
+  const playing=new Set(gs.flatMap(s=>[s[2],s[3]]));
+  const bye=TEAMS.filter(t=>!playing.has(t));
+  $('games').innerHTML=gs.map(s=>{const [w,day,a,hm,sc,tm]=s;
+    const meta=sc?`Final ${a} ${sc[0]}, ${hm} ${sc[1]}`:fmtDay(day,tm);
+    return `<article class="game"><div class="gh"><b>${a} @ ${hm}</b><span>${meta}</span></div>${sideBtn(a,hm)}${sideBtn(hm,a)}</article>`;}).join('')+
+    (bye.length?`<p class="note" style="grid-column:1/-1">On bye: ${bye.map(t=>NAMES[t]).join(', ')}</p>`:'');
+}
+function showHome(){show('board');}
+function openMatch(def,off){
+  S.def=def;S.off=off;show('detail');$('backWk').textContent=HW;sync();
+}
+
+const CUR=(D.schedule.find(s=>s[4]==null)||D.schedule[D.schedule.length-1])[0];
+const BET_MIN={rbRush:35,rbRec:15,wr1:40,wr2:30,wr3:20,teRec:25,qbRush:15};
+const ROLE_LABEL={rbRush:'RB rushing',rbRec:'RB receiving',wr1:'WR1',wr2:'WR2',wr3:'WR3+',teRec:'TE receiving',qbRush:'QB rushing'};
+const OUT=new Set(['Out','IR','Traded','Released','Inactive','Doubtful']);
+const stOf=p=>(D.status||{})[p[7]]||null;
+function stTag(x){if(!x.st) return '';const s=x.st[0];return ` <span class="st st-${s.toLowerCase()}" title="${x.st[1]||''}">${s==='IR'?'IR':s}</span>`;}
+function roles(off){
+  const P=D.players[off]||{};
+  const wrap=p0=>{const p=[...p0];p[1]=p[1]||1;const st=stOf(p);return {p,st,out:!!(st&&OUT.has(st[0])),role:null};};
+  const lists={};['RB','WR','TE','QB'].forEach(k=>lists[k]=(P[k]||[]).map(wrap));
+  const avail=k=>lists[k].filter(x=>!x.out);
+  const wa=avail('WR'); ['wr1','wr2','wr3'].forEach((r,i)=>{if(wa[i]) wa[i].role=r;});
+  const pick={};
+  const firstOut=(k,i)=>lists[k].slice(0,i).filter(x=>x.out);
+  pick.wr1=wa[0];pick.wr2=wa[1];pick.wr3=wa[2];
+  const rb=avail('RB'); pick.rbRush=rb[0]; pick.rbRec=[...rb].sort((a,b)=>b.p[3]/b.p[1]-a.p[3]/a.p[1])[0];
+  pick.teRec=avail('TE')[0]; pick.qbRush=avail('QB')[0];
+  const missing={};
+  const outBy=k=>lists[k].filter(x=>x.out&&x.p[1]>=2);
+  missing.WR=outBy('WR').filter(x=>lists.WR.indexOf(x)<3); missing.RB=outBy('RB').filter(x=>lists.RB.indexOf(x)<1);
+  missing.TE=outBy('TE').filter(x=>lists.TE.indexOf(x)<1); missing.QB=lists.QB.filter(x=>x.out&&lists.QB.indexOf(x)<1);
+  return {lists,pick,missing};
+}
+const POS_OF={rbRush:'RB',rbRec:'RB',wr1:'WR',wr2:'WR',wr3:'WR',teRec:'TE',qbRush:'QB'};
+function playerFor(off,k){
+  const RL=roles(off); const x=RL.pick[k]; if(!x) return null;
+  const [n,g,ry,cy]=x.p; const pos=POS_OF[k];
+  const L=RL.lists[pos], xi=L.indexOf(x);
+  const miss=L.filter((m,i)=>m.out&&i<xi&&m.p[1]>=2);
+  const note=miss.length?`${miss.map(m=>`${m.p[0]} (${m.st[0]==='IR'?'IR':m.st[0].toLowerCase()})`).join(', ')} ${miss.length>1?'are':'is'} sidelined, so ${n} steps in.`:'';
+  return {name:n,pg:(['rbRush','qbRush'].includes(k)?ry:cy)/g,st:x.st,note};
+}
+function bestBets(){
+  const out=[];
+  D.schedule.filter(s=>s[0]===CUR&&s[4]==null).forEach(s=>{
+    [[s[2],s[3]],[s[3],s[2]]].forEach(([off,def])=>{
+      ROWS.filter(r=>r.board!==false).forEach(r=>{
+        const T=tableFor('def',r.y,'season'), O=tableFor('off',r.y,'season');
+        const f=T.avg>0?T.vals[def]/T.avg:1, o=O.vals[off];
+        if(o<BET_MIN[r.k]||f<1.1) return;
+        const pl=playerFor(off,r.k); if(!pl||pl.pg<BET_MIN[r.k]/2) return;
+        out.push({k:r.k,off,def,f,o,d:T.vals[def],rank:T.rank[def],pl,exp:(pl?pl.pg:o)*adj(f),base:pl?pl.pg:o,game:s});
+      });
+    });
+  });
+  return out.sort((a,b)=>b.f-a.f||(b.exp-b.base)-(a.exp-a.base));
+}
+function defInj(def,k){
+  const grp=['rbRush','qbRush'].includes(k)?['DL','LB']:['DB','LB'];
+  const l=(D.dinj[def]||[]).filter(x=>grp.includes(x[2])&&(x[3]==='Out'||x[3]==='Doubtful'));
+  return l.length?`<div class="why inj">${nick(def)} will be without ${l.slice(0,3).map(x=>`${x[1]} ${x[0]} (${x[3].toLowerCase()})`).join(', ')}${l.length>3?` and ${l.length-3} more`:''}.</div>`:'';
+}
+let BETF='all';
+function renderBets(){
+  const all=bestBets();
+  $('betsTitle').textContent=`Week ${CUR} best bets`;
+  const keys=['all','rbRush','rbRec','wr1','wr2','wr3','teRec','qbRush'];
+  $('betSeg').innerHTML=keys.map(k=>`<button type="button" data-bf="${k}" aria-pressed="${BETF===k}">${k==='all'?'All positions':ROLE_LABEL[k]}</button>`).join('');
+  const list=all.filter(b=>BETF==='all'||b.k===BETF).slice(0,20);
+  $('bets').innerHTML=list.length?list.map(b=>{const [c,l]=grade(b.f);const s=b.game;
+    return `<li class="bet" data-def="${b.def}" data-off="${b.off}" tabindex="0" role="button">
+      <div><div class="p">${b.pl?b.pl.name:nick(b.off)+' '+ROLE_LABEL[b.k]}${b.pl?stTag(b.pl):''} <small>${b.off} ${ROLE_LABEL[b.k]} · ${s[2]===b.off?'at':'vs'} ${b.def} · ${fmtDay(s[1],s[5])}</small></div>
+      <div class="why">${nick(b.def)} allow <b>${fmt(b.d)} yds/g</b> to ${ROLE_LABEL[b.k]}, ${Math.round((b.f-1)*100)}% above average (${ord(b.rank)} most in the NFL).</div>${b.pl&&b.pl.note?`<div class="why inj">${b.pl.note}</div>`:''}${defInj(b.def,b.k)}</div>
+      <div class="proj"><div class="big">${Math.round(b.exp)}<span> yds projected</span></div><div class="note">usually ${fmt(b.base)}</div><span class="tag t-${c}">${l}</span></div></li>`;}).join(''):'<li class="empty">No standout matchups left this week for this position.</li>';
+}
+function renderLanding(){
+  const gs=D.schedule.filter(s=>s[0]===CUR); const left=gs.filter(s=>s[4]==null).length;
+  $('tileBoard').textContent=`Week ${CUR}: ${gs.length} games, ${left} still to play. Pick any side of any game to see how its offense lines up against the other defense.`;
+  const top=bestBets().slice(0,3);
+  $('tileBets').innerHTML=top.length?`This week’s top three:<ol>${top.map(b=>`<li>${b.pl?b.pl.name:nick(b.off)} (${ROLE_LABEL[b.k]}) vs ${b.def}</li>`).join('')}</ol>`:'No games left to play this week.';
+}
+// ======================= NHL =======================
+let N=null, NLOAD=null, NDAY=null;
+function loadNHL(){
+  if(N) return Promise.resolve(N);
+  if(!NLOAD) NLOAD=fetch('nhl.json',{cache:'no-cache'}).then(r=>{if(!r.ok) throw new Error(r.status);return r.json();}).then(j=>(N=j));
+  return NLOAD;
+}
+const nT=a=>(N.teams[a]||{name:a,short:a});
+const rec=x=>x?`${x.w}-${x.l}-${x.otl}`:'—';
+const nper=(v,g)=>(v==null||!g)?null:v/g;
+const f2=v=>v==null?'—':v.toFixed(2);
+const npct=v=>v==null||v===0?'—':(v*100).toFixed(1)+'%';
+const svp=v=>!v?'—':v.toFixed(3).replace(/^0/,'');
+const tLocal=s=>{if(!s) return '';const d=new Date(s);return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',timeZoneName:'short'});};
+const dLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+function goalieOf(team,id){return (nT(team).goalies||[]).find(g=>g.id===id);}
+function chip(p){
+  if(!p) return '<span class="chip chip-none">No goalie listed</span>';
+  if(p.status==='Confirmed') return '<span class="chip chip-confirmed">Confirmed</span>';
+  if(p.status==='Expected') return '<span class="chip chip-expected">Expected</span>';
+  return '<span class="chip chip-projected">Projected</span>';
+}
+function gameState(g){
+  if(g.state==='OFF'||g.state==='FINAL') return `Final${g.lastPeriod&&g.lastPeriod!=='REG'?' / '+g.lastPeriod:''}`;
+  if(g.state==='LIVE'||g.state==='CRIT') return 'Live';
+  return tLocal(g.start);
+}
+function renderNhlBoard(){
+  if(!N){ $('nhlGames').innerHTML='<p class="note">Loading hockey data…</p>'; loadNHL().then(renderNhlBoard).catch(()=>{$('nhlGames').innerHTML='<p class="note">Couldn’t load the NHL data (nhl.json). It’s created by the “Update stats and publish site” workflow, so run it once from the Actions tab.</p>';}); return; }
+  const days=[...new Set(N.games.map(g=>g.date))].sort();
+  const today=new Date().toLocaleDateString('en-CA');
+  if(!NDAY||!days.includes(NDAY)) NDAY=days.find(d=>d>=today)||days[0];
+  $('nhlDays').innerHTML=days.map(d=>`<button type="button" data-nday="${d}" aria-pressed="${d===NDAY}">${d===today?'Today':dLabel(d)}</button>`).join('');
+  $('nhlSub').textContent=`Pick a game for the full breakdown: projected goalies, the last seven games, home and road splits, special teams and injuries. Data updated ${new Date(N.asOf).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}.`;
+  const gs=N.games.filter(g=>g.date===NDAY);
+  $('nhlLegend').hidden=!gs.some(goldGame);
+  $('nhlGames').innerHTML=gs.length?gs.map(g=>{
+    const side=(ab,key)=>{const t=nT(ab);const p=(g.goalies||{})[key];const st=p&&goalieOf(ab,p.id);
+      const score=g[key+'Score']!=null&&g.state!=='FUT'&&g.state!=='PRE'?`<b style="font:400 1.3rem 'Graduate',serif">${g[key+'Score']}</b>`:'';
+      return `<div class="tm"><span class="tn">${t.name}${isB2B(ab,g.date)?' <span class="chip chip-b2b">B2B</span>':''}</span><span class="tr">${score||rec(t)+' · '+(t.pts??'')+' pts'}</span>
+        <span class="gl">${chip(p)} ${p?`<b>${p.name}</b> <span class="hint">${st&&st.gp?`${svp(st.svp)} · ${f2(st.gaa)} GAA`:'no NHL starts yet'}</span>`:''}</span></div>`;};
+    return `<article class="game nhl-game${goldGame(g)?' gold':''}" data-ngame="${g.id}" tabindex="0" role="button"><div class="gh"><b>${g.away} @ ${g.home}</b><span>${gameState(g)}</span></div>${side(g.away,'away')}${side(g.home,'home')}</article>`;
+  }).join(''):'<p class="note">No games this day.</p>';
+}
+function renderNhlGame(id){
+  if(!N){ loadNHL().then(()=>renderNhlGame(id)); $('nhlGame').innerHTML='<p class="note">Loading…</p>'; return; }
+  const g=N.games.find(x=>String(x.id)===String(id)); if(!g){ show('nhl'); return; }
+  const A=nT(g.away), H=nT(g.home);
+  const when=`${dLabel(g.date)} · ${gameState(g)}`;
+  // goalies
+  const gcard=(ab,key)=>{const t=nT(ab);const p=(g.goalies||{})[key];const st=p&&goalieOf(ab,p.id);
+    const injG=(t.injuries||[]).filter(i=>i.pos==='G');
+    const others=(t.goalies||[]).filter(x=>!p||x.id!==p.id);
+    return `<div class="gcard"><h3>${t.name} <span>${key==='home'?'Home':'Away'}</span></h3>
+      ${p?`<div class="starter"><b>${p.name}</b>${chip(p)}</div><p class="hint" style="margin:4px 0 0">${p.why||''}</p>
+      <div class="gline"><div><small>GP / GS</small><strong>${st?st.gp+' / '+st.gs:'—'}</strong></div><div><small>Record</small><strong>${st?rec(st):'—'}</strong></div><div><small>GAA</small><strong>${st&&st.gp?f2(st.gaa):'—'}</strong></div><div><small>SV%</small><strong>${st&&st.gp?svp(st.svp):'—'}</strong></div><div><small>SO</small><strong>${st?st.so:'—'}</strong></div></div>`:'<p class="hint">No goalie could be projected.</p>'}
+      ${others.length?`<ul class="others">${others.map(o=>{const ij=injG.find(i=>i.name===o.name);return `<li><span>${o.name}${ij?` <span class="st st-${ij.status.toLowerCase().replace(/[^a-z]/g,'')}">${ij.status}</span>`:''}</span><span class="hint">${o.gp?`${rec(o)} · ${f2(o.gaa)} · ${svp(o.svp)}`:'No starts'}</span></li>`}).join('')}</ul>`:''}
+    </div>`;};
+  // comparison
+  const row=(label,a,h,better,key)=>{const av=a.v,hv=h.v;let ca='',ch='';
+    if(better&&av!=null&&hv!=null&&av!==hv){const aw=better==='hi'?av>hv:av<hv;ca=aw?'better':'';ch=aw?'':'better';}
+    return `<tr${key?' class="key"':''}><td>${label}</td><td class="${ca}">${a.t}</td><td class="${ch}">${h.t}</td></tr>`;};
+  const V=(v,t)=>({v,t:t??(v==null?'—':v)});
+  const gpg=(t,s)=>nper(s?(t[s]||{}).gf:t.gf,s?(t[s]||{}).gp:t.gp), gapg=(t,s)=>nper(s?(t[s]||{}).ga:t.ga,s?(t[s]||{}).gp:t.gp);
+  const st=x=>x.stats||{};
+  const otw=t=>t.rotw-t.rw-0, otl=t=>t.otl-(t.so?t.so.l:0);
+  const cmp=`<div class="tablewrap"><table class="cmp"><thead><tr><th></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>
+    <tr class="grp"><td colspan="3">Overall</td></tr>
+    ${row('Record (W-L-OTL)',V(A.pts,rec(A)),V(H.pts,rec(H)),'hi')}
+    ${row('Points',V(A.pts,`${A.pts} (${(A.ptsPct*100).toFixed(1)}%)`),V(H.pts,`${H.pts} (${(H.ptsPct*100).toFixed(1)}%)`),'hi')}
+    ${row('Goals for / game',V(gpg(A),f2(gpg(A))),V(gpg(H),f2(gpg(H))),'hi')}
+    ${row('Goals against / game',V(gapg(A),f2(gapg(A))),V(gapg(H),f2(gapg(H))),'lo')}
+    ${row('Goal differential',V(A.gf-A.ga,(A.gf-A.ga>0?'+':'')+(A.gf-A.ga)),V(H.gf-H.ga,(H.gf-H.ga>0?'+':'')+(H.gf-H.ga)),'hi')}
+    ${row('Last 10',V(A.l10.w,rec(A.l10)),V(H.l10.w,rec(H.l10)),'hi')}
+    ${row('Streak',V(null,A.streak||'—'),V(null,H.streak||'—'))}
+    <tr class="grp"><td colspan="3">Tonight’s split: ${g.away} on the road, ${g.home} at home</td></tr>
+    ${row('Record',V(null,rec(A.road)),V(null,rec(H.home)),null,1)}
+    ${row('Goals for / game',V(gpg(A,'road'),f2(gpg(A,'road'))),V(gpg(H,'home'),f2(gpg(H,'home'))),'hi',1)}
+    ${row('Goals against / game',V(gapg(A,'road'),f2(gapg(A,'road'))),V(gapg(H,'home'),f2(gapg(H,'home'))),'lo',1)}
+    <tr class="grp"><td colspan="3">Home</td></tr>
+    ${row('Home record',V(null,rec(A.home)),V(null,rec(H.home)))}
+    ${row('Home GF / GA per game',V(null,`${f2(gpg(A,'home'))} / ${f2(gapg(A,'home'))}`),V(null,`${f2(gpg(H,'home'))} / ${f2(gapg(H,'home'))}`))}
+    <tr class="grp"><td colspan="3">Road</td></tr>
+    ${row('Road record',V(null,rec(A.road)),V(null,rec(H.road)))}
+    ${row('Road GF / GA per game',V(null,`${f2(gpg(A,'road'))} / ${f2(gapg(A,'road'))}`),V(null,`${f2(gpg(H,'road'))} / ${f2(gapg(H,'road'))}`))}
+    <tr class="grp"><td colspan="3">Special teams and shots</td></tr>
+    ${row('Power play',V(st(A).powerPlayPct,npct(st(A).powerPlayPct)),V(st(H).powerPlayPct,npct(st(H).powerPlayPct)),'hi')}
+    ${row('Penalty kill',V(st(A).penaltyKillPct,npct(st(A).penaltyKillPct)),V(st(H).penaltyKillPct,npct(st(H).penaltyKillPct)),'hi')}
+    ${row('Shots for / game',V(st(A).shotsForPerGame,f1(st(A).shotsForPerGame)),V(st(H).shotsForPerGame,f1(st(H).shotsForPerGame)),'hi')}
+    ${row('Shots against / game',V(st(A).shotsAgainstPerGame,f1(st(A).shotsAgainstPerGame)),V(st(H).shotsAgainstPerGame,f1(st(H).shotsAgainstPerGame)),'lo')}
+    ${row('Faceoff win %',V(st(A).faceoffWinPct,npct(st(A).faceoffWinPct)),V(st(H).faceoffWinPct,npct(st(H).faceoffWinPct)),'hi')}
+    </tbody></table></div>`;
+  // last 7
+  const l7=t=>{const L=t.last7||[];if(!L.length) return '<p class="hint">No games yet.</p>';
+    const w=L.filter(x=>x.res==='W').length,l=L.filter(x=>x.res==='L').length,o=L.filter(x=>x.res==='OTL').length;
+    const gf=L.reduce((s,x)=>s+x.gf,0)/L.length, ga=L.reduce((s,x)=>s+x.ga,0)/L.length;
+    return `<div class="tablewrap"><table class="l7"><thead><tr><th>Date</th><th>Opp</th><th>Result</th><th>Starting goalie</th><th>Saves</th></tr></thead><tbody>${L.map(x=>`<tr><td>${dLabel(x.date)}</td><td>${x.home?'vs':'@'} ${x.opp}</td><td><span class="res-${x.res}">${x.res==='OTL'?'OTL':x.res}</span> ${x.gf}–${x.ga}${x.ot?' '+x.ot:''}</td><td>${x.goalie?x.goalie.name+(x.goalie.pulled?' <span class="hint">(pulled/relieved)</span>':''):'—'}</td><td>${x.goalie&&x.goalie.sa?`${x.goalie.sv}/${x.goalie.sa} · ${svp(x.goalie.sv/x.goalie.sa)}`:'—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="2">Last ${L.length}</td><td>${w}-${l}-${o}</td><td colspan="2">${f2(gf)} GF · ${f2(ga)} GA per game</td></tr></tfoot></table></div>`;};
+  const injList=t=>{const I=t.injuries||[];return I.length?`<ul class="injl">${I.map(i=>`<li><span><b>${i.name}</b> <span class="hint">${i.pos}${i.detail?' · '+i.detail:''}${i.ret?' · est. return '+dLabel(i.ret):''}</span></span><span class="st st-${(i.status||'').toLowerCase().replace(/[^a-z]/g,'')}">${i.status||'—'}</span></li>`).join('')}</ul>`:'<p class="hint" style="margin:0">No injuries listed.</p>';};
+  const b2bA=isB2B(g.away,g.date), b2bH=isB2B(g.home,g.date);
+  const b2bTxt=[b2bA?`${A.name} played yesterday (back-to-back)`:'',b2bH?`${H.name} played yesterday (back-to-back)`:''].filter(Boolean).join(' · ');
+  $('nhlGame').innerHTML=`<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
+    <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
+    <h2>Goalies</h2><p class="sub">${N.msf==='on'?'<b>Expected</b> means MySportsFeeds lists him as the expected starter. ':''}<b>Confirmed</b> means he’s in the starting lineup or has started the game. <b>Projected</b> is Five Hole’s own pick from recent starts, back-to-backs and injuries, used when nothing firmer is available.</p>
+    <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
+    <h2>Goalie game logs</h2><p class="sub">Each goalie’s last ${GLOG_N} appearances this season. The projected starter is shown first; switch goalies with the buttons.</p>
+    <div id="glogs">${glogSection(g)}</div>
+    <h2>Team comparison</h2><p class="sub">Season numbers. The better side of each comparable stat is highlighted; shaded rows are the splits that apply tonight.</p>${cmp}
+    <h2>Last 7 games</h2><div><h3 class="logh">${A.name}</h3>${l7(A)}</div><div><h3 class="logh">${H.name}</h3>${l7(H)}</div>
+    <h2>Injuries</h2><div class="cols"><div class="gcard"><h3>${A.name}</h3>${injList(A)}</div><div class="gcard"><h3>${H.name}</h3>${injList(H)}</div></div>`;
+}
+const f1=v=>v==null?'—':Number(v).toFixed(1);
+const nrm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const am=v=>v==null?'—':(v>0?'+':'')+v;
+const ln=v=>v==null?'':(v>0?'+':'')+v;
+function playedOn(ab,d){
+  if(N.games.some(x=>x.date===d&&(x.home===ab||x.away===ab))) return true;
+  return (nT(ab).last7||[]).some(x=>x.date===d);
+}
+function isB2B(ab,date){const t=new Date(date+'T12:00:00');t.setDate(t.getDate()-1);return playedOn(ab,t.toLocaleDateString('en-CA'));}
+function goldGame(g){return !isB2B(g.home,g.date)&&isB2B(g.away,g.date);}
+function oddsSection(g){
+  const o=g.odds;
+  if(!o) return '<p class="hint">ESPN hasn’t posted a line for this game yet. Lines usually appear a day or two before puck drop.</p>';
+  const pl=(x)=>x&&x[0]!=null?`${ln(x[0])} <span class="hint">${am(x[1])}</span>`:'—';
+  const upd=o.updated?new Date(o.updated).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+  return `<div class="tablewrap"><table class="odds"><thead>
+    <tr><th rowspan="2">Book</th><th colspan="2" class="og">Moneyline</th><th colspan="2" class="og">Puck line</th><th colspan="2" class="og">Total (O/U)</th></tr>
+    <tr><th class="og">${g.away}</th><th>${g.home}</th><th class="og">${g.away}</th><th>${g.home}</th><th class="og">Over</th><th>Under</th></tr></thead>
+    <tbody><tr><td><b>${o.provider||'ESPN'}</b></td>
+    <td>${am(o.ml&&o.ml.away)}</td><td>${am(o.ml&&o.ml.home)}</td>
+    <td>${pl(o.pl&&o.pl.away)}</td><td>${pl(o.pl&&o.pl.home)}</td>
+    <td>${o.tot?`O ${o.tot.line} <span class="hint">${am(o.tot.over)}</span>`:'—'}</td><td>${o.tot?`U ${o.tot.line} <span class="hint">${am(o.tot.under)}</span>`:'—'}</td></tr></tbody></table></div>
+    <p class="hint" style="margin-top:6px">From ESPN’s game feed${upd?`, checked ${upd}`:''}. Refreshed hourly; lines move, so check your book before betting.</p>`;
+}
+
+const GLOG_N=10; let GLSEL={};
+function glogSection(g){
+  return ['away','home'].map(key=>{const ab=g[key];const t=nT(ab);const p=(g.goalies||{})[key];
+    const list=[...(t.goalies||[])].sort((a,b)=>(p&&b.id===p.id)-(p&&a.id===p.id)||b.gs-a.gs);
+    if(!list.length) return '';
+    const sel=GLSEL[key]&&list.some(x=>x.id===GLSEL[key])?GLSEL[key]:list[0].id;
+    const gl=list.find(x=>x.id===sel); const L=gl.log||[];
+    const tabs=list.map(x=>`<button type="button" data-glt="${key}:${x.id}" aria-pressed="${x.id===sel}">${x.name}${p&&x.id===p.id?' · projected':''}</button>`).join('');
+    const starts=L.filter(x=>x.gs).slice(0,5);
+    const s5=starts.reduce((a,x)=>({sa:a.sa+x.sa,ga:a.ga+x.ga,m:a.m+x.min}),{sa:0,ga:0,m:0});
+    const decTxt=d=>d==='O'?'OTL':d;
+    const body=L.length?`<div class="tablewrap"><table class="l7"><thead><tr><th>Date</th><th>Opp</th><th>Role</th><th>Dec</th><th>GA</th><th>Saves</th><th>SV%</th><th>TOI</th></tr></thead><tbody>${L.map(x=>`<tr><td>${dLabel(x.date)}</td><td>${x.home?'vs':'@'} ${x.opp}</td><td>${x.gs?'Start':'<span class="hint">Relief</span>'}</td><td><span class="res-${x.dec==='W'?'W':'L'}">${decTxt(x.dec)||'—'}</span></td><td>${x.ga}${x.so?' <span class="chip chip-confirmed">SO</span>':''}</td><td>${x.sv}/${x.sa}</td><td>${svp(x.svp)}</td><td>${x.toi}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="4">Last ${starts.length} start${starts.length===1?'':'s'}</td><td colspan="4">${s5.sa?`${svp((s5.sa-s5.ga)/s5.sa)} SV% · ${f2(s5.m?s5.ga*60/s5.m:0)} GAA`:'—'}</td></tr></tfoot></table></div>`:'<p class="hint">No NHL appearances this season.</p>';
+    return `<div class="glog-team"><h3 class="logh">${t.name}</h3><div class="seg">${tabs}</div>${body}</div>`;}).join('');
+}
+
+function openNhlGame(id){ NGID=id; GLSEL={}; show('nhlGame'); }
+let NGID=null;
+
+const VIEWS={home:'landView',board:'homeView',bets:'betsView',detail:'detailView',nhl:'nhlBoardView',nhlGame:'nhlGameView'};
+function show(v){
+  Object.entries(VIEWS).forEach(([k,id])=>$(id).hidden=k!==v);
+  const nav=v==='detail'?'board':v==='nhlGame'?'nhl':v;
+  document.querySelectorAll('.menu [data-view]').forEach(b=>b.setAttribute('aria-current',b.dataset.view===nav?'page':'false'));
+  document.querySelectorAll('.menu .dd').forEach(d=>{const on=!!d.querySelector(`[data-view="${nav}"]`);d.querySelector('.ddb').setAttribute('aria-current',on?'page':'false');d.querySelector('.ddm').hidden=true;d.querySelector('.ddb').setAttribute('aria-expanded','false');});
+  $('foot').hidden=!['board','detail','bets'].includes(v);
+  if(v==='home') renderLanding(); if(v==='bets') renderBets(); if(v==='board') renderHome();
+  if(v==='nhl') renderNhlBoard(); if(v==='nhlGame') renderNhlGame(NGID);
+  window.scrollTo(0,0);
+}
+
+function init(){
+  $('src').textContent=`NFL stats through ${D.asOf} (${D.season} season, from nflverse). NHL data refreshes hourly.`;
+  $('foot').innerHTML=`How the matchup works: “expected yards” takes what this offense (or player) normally gains at a position and moves it halfway toward what the defense’s yards allowed would suggest. A defense allowing 40% more than average lifts the projection 20%. Going halfway keeps a few big games from producing runaway projections. Attack means the defense allows 20%+ more than average; Avoid means 20%+ less. Small samples swing hard early in the season, and the numbers don’t know about injuries, weather or game script. RB and WR splits use each player’s listed position; fullbacks count as RBs. Kneel-downs are removed from all rushing numbers, taken from the play-by-play. Injury statuses come from the official Week ${D.injWeek} injury report and current rosters (injured reserve, trades and releases); a doubtful player is treated as out. WR1, WR2 and WR3+ follow each team’s depth chart. For past games, the receivers who played are ranked by the depth chart in effect that day, so if a team’s top receiver sits out, the next man up counts as WR1 that week. This week’s roles use the current depth chart. Alignment data isn’t in the free stats, so WR3+ is a stand-in for the slot rather than a true slot split. Stats snapshot: ${D.asOf}.`;
+  const opts=TEAMS.map(t=>`<option value="${t}">${NAMES[t]}</option>`).join('');
+  $('defSel').innerHTML=opts; $('offSel').innerHTML=opts;
+  const m=(location.hash||'').slice(1).split('-');
+  $('games').addEventListener('click',e=>{const b=e.target.closest('.side');if(b) openMatch(b.dataset.def,b.dataset.off);});
+  $('back').onclick=showHome;
+  $('wkPrev').onclick=()=>{const i=WEEKS.indexOf(HW);if(i>0){HW=WEEKS[i-1];renderHome();}};
+  $('wkNext').onclick=()=>{const i=WEEKS.indexOf(HW);if(i<WEEKS.length-1){HW=WEEKS[i+1];renderHome();}};
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){e.preventDefault();show(b.dataset.view);}});
+  $('betSeg').addEventListener('click',e=>{const b=e.target.closest('[data-bf]');if(b){BETF=b.dataset.bf;renderBets();}});
+  const openBet=e=>{const b=e.target.closest('.bet');if(b&&b.dataset.def) openMatch(b.dataset.def,b.dataset.off);};
+  $('bets').addEventListener('click',openBet);
+  $('bets').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openBet(e);}});
+  document.querySelectorAll('.menu .ddb').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const m_=b.nextElementSibling;const open=m_.hidden;document.querySelectorAll('.menu .ddm').forEach(x=>{x.hidden=true;x.previousElementSibling.setAttribute('aria-expanded','false');});m_.hidden=!open;b.setAttribute('aria-expanded',String(open));}));
+  document.addEventListener('click',e=>{if(!e.target.closest('.dd')) document.querySelectorAll('.menu .ddm').forEach(x=>{x.hidden=true;x.previousElementSibling.setAttribute('aria-expanded','false');});});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') document.querySelectorAll('.menu .ddm').forEach(x=>x.hidden=true);});
+  $('nhlGame').addEventListener('click',e=>{const b=e.target.closest('[data-glt]');if(!b) return;const [k,id]=b.dataset.glt.split(':');GLSEL[k]=Number(id);const g=N.games.find(x=>String(x.id)===String(NGID));$('glogs').innerHTML=glogSection(g);});
+  $('nhlDays').addEventListener('click',e=>{const b=e.target.closest('[data-nday]');if(b){NDAY=b.dataset.nday;renderNhlBoard();}});
+  const og=e=>{const c=e.target.closest('[data-ngame]');if(c) openNhlGame(c.dataset.ngame);};
+  $('nhlGames').addEventListener('click',og);
+  $('nhlGames').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();og(e);}});
+  loadNHL().then(()=>{const n=N.games.filter(g=>g.date===new Date().toLocaleDateString('en-CA')).length;$('tileNhl').textContent=n?`${n} game${n===1?'':'s'} today, with projected goalies, recent form and team splits.`:'This week’s games with projected goalies, recent form and team splits.';}).catch(()=>{});
+  const hv=(location.hash||'').slice(1);
+  if(/^nhl-\d+$/.test(hv)) openNhlGame(hv.slice(4));
+  else if(NAMES[m[0]]&&NAMES[m[1]]) openMatch(m[0],m[1]); else show(VIEWS[hv]&&hv!=='detail'&&hv!=='nhlGame'?hv:'home');
+  $('defSel').onchange=e=>{S.def=e.target.value;sync()};
+  $('offSel').onchange=e=>{S.off=e.target.value;sync()};
+  $('swap').onclick=()=>{[S.def,S.off]=[S.off,S.def];sync()};
+  $('wk').onclick=()=>{const g=nextGame(S.def);if(g){S.off=g[2]===S.def?g[3]:g[2];sync();}};
+  document.querySelectorAll('[data-win]').forEach(b=>b.onclick=()=>{S.win=b.dataset.win;CACHE={};document.querySelectorAll('[data-win]').forEach(x=>x.setAttribute('aria-pressed',x===b));render()});
+  ['segRu','segRe'].forEach(id=>$(id).addEventListener('click',e=>{const b=e.target.closest('[data-logf]');if(b){const [s,o]=b.dataset.logf.split(':');LOGF[s]=o;renderLogs();}}));
+  $('seg').addEventListener('click',e=>{const b=e.target.closest('[data-lg]');if(b){S.lg=b.dataset.lg;renderLeague();}});
+}
+function sync(){
+  $('defSel').value=S.def;$('offSel').value=S.off;
+  const g=nextGame(S.def);
+  $('wkNote').textContent=g?`${nick(S.def)} next: Week ${g[0]} ${g[2]===S.def?'at '+NAMES[g[3]]:'vs '+NAMES[g[2]]}`:'';
+  render();
+}
+init();
+})();
+</script>
+</body>
+</html>
