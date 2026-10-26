@@ -149,12 +149,14 @@ with ThreadPoolExecutor(max_workers=6) as ex:
     boxes = dict(zip(need, ex.map(lambda gid: get(f'{WEB}/gamecenter/{gid}/boxscore'), list(need))))
 
 
-def starters(box):
+def starters(box, require_flag=False):
     out = {}
     pbs = (box or {}).get('playerByGameStats') or {}
     for side in ('homeTeam', 'awayTeam'):
         gl = (pbs.get(side) or {}).get('goalies') or []
-        st_ = [g for g in gl if g.get('starter')] or sorted(gl, key=lambda g: -num(g.get('shotsAgainst')))[:1]
+        st_ = [g for g in gl if g.get('starter')]
+        if not st_ and not require_flag:
+            st_ = sorted(gl, key=lambda g: -num(g.get('shotsAgainst')))[:1]
         if st_:
             g = st_[0]
             out[side] = {'id': g.get('playerId'), 'name': txt(g.get('name')), 'sv': int(num(g.get('saves'))),
@@ -333,15 +335,26 @@ def unavailable(ab, name):
 
 def project(ab, game):
     t = teams[ab]
+    key = 'homeTeam' if game['home'] == ab else 'awayTeam'
     if game['state'] in ('LIVE', 'CRIT', 'OFF', 'FINAL'):
-        s = starters(get(f"{WEB}/gamecenter/{game['id']}/boxscore")).get('homeTeam' if game['home'] == ab else 'awayTeam')
+        s = starters(get(f"{WEB}/gamecenter/{game['id']}/boxscore")).get(key)
         if s:
             return {'id': s['id'], 'name': s['name'], 'status': 'Confirmed', 'why': 'Started the game.'}
+    elif pregame_window(game):
+        s = starters(boxcache(game['id']), require_flag=True).get(key)
+        if s:
+            return {'id': s['id'], 'name': s['name'], 'status': 'Confirmed',
+                    'why': 'Named the starter in the official NHL game lineup.'}
     m = msf_pick.get((game['id'], ab))
     if m:
         gl_ = match_goalie(ab, m['name'])
         src = 'MySportsFeeds lists him in the starting lineup.' if m['status'] == 'Confirmed' else 'MySportsFeeds lists him as the expected starter.'
         return {'id': gl_['id'] if gl_ else None, 'name': gl_['name'] if gl_ else m['name'], 'status': m['status'], 'why': src}
+    e = espn_prob.get((game['id'], ab))
+    if e:
+        gl_ = match_goalie(ab, e['name'])
+        return {'id': gl_['id'] if gl_ else None, 'name': gl_['name'] if gl_ else e['name'], 'status': e['status'],
+                'why': 'ESPN lists him as the confirmed starter.' if e['status'] == 'Confirmed' else 'ESPN lists him as the probable starter.'}
     healthy = [g for g in t['goalies'] if not unavailable(ab, g['name'])]
     out = [g['name'] for g in t['goalies'] if unavailable(ab, g['name'])]
     if not healthy:
@@ -430,6 +443,39 @@ def espn_odds(comp):
 
 
 ODDS_AT = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+espn_prob = {}   # (game id, team) -> {'name','status'}
+
+
+def espn_goalie(c):
+    for p in c.get('probables', []) or []:
+        a = p.get('athlete') or {}
+        tag = ' '.join(str(x) for x in (p.get('name'), p.get('displayName'), p.get('abbreviation'),
+                                         (a.get('position') or {}).get('abbreviation'))).lower()
+        if ('goal' in tag or ' g' in f' {tag}') and a.get('displayName'):
+            st = ' '.join(str(x) for x in ((p.get('status') or {}).get('name'), (p.get('status') or {}).get('type'),
+                                            p.get('statusName') or '')).lower()
+            return {'name': a['displayName'], 'status': 'Confirmed' if ('confirm' in st and 'unconfirm' not in st) else 'Expected'}
+    return None
+
+
+_box = {}
+
+
+def boxcache(gid):
+    if gid not in _box:
+        _box[gid] = get(f'{WEB}/gamecenter/{gid}/boxscore')
+    return _box[gid]
+
+
+def pregame_window(game):
+    if game['state'] == 'PRE':
+        return True
+    try:
+        start = datetime.datetime.fromisoformat(game['start'].replace('Z', '+00:00'))
+    except (ValueError, AttributeError, KeyError):
+        return False
+    mins = (start - datetime.datetime.now(datetime.timezone.utc)).total_seconds() / 60
+    return -15 < mins < 75
 for day in sorted({g['date'] for g in games if g.get('date')}):
     sb = get(f"{ESPN_SB}?dates={day.replace('-', '')}") or {}
     for ev in sb.get('events', []) or []:
@@ -439,6 +485,11 @@ for day in sorted({g['date'] for g in games if g.get('date')}):
             side[c.get('homeAway')] = by_name.get(norm((c.get('team') or {}).get('displayName')))
         g = next((x for x in games if x['date'] == day and x['home'] == side.get('home') and x['away'] == side.get('away')), None)
         if g:
+            for c in comp.get('competitors', []) or []:
+                ab_ = side.get(c.get('homeAway'))
+                pg = espn_goalie(c)
+                if ab_ and pg:
+                    espn_prob[(g['id'], ab_)] = pg
             od = espn_odds(comp)
             if od:
                 od['updated'] = ODDS_AT
@@ -454,6 +505,6 @@ data = {
 }
 with open(OUT, 'w') as f:
     json.dump(data, f, separators=(',', ':'))
-print(f'wrote {OUT}: {len(teams)} teams, {len(games)} games this week ({sum(1 for g in games if g.get("odds"))} with odds), {len(need)} box scores, MySportsFeeds {MSF_STATUS} ({len(msf_pick)} goalies), {len(WARN)} warnings')
+print(f'wrote {OUT}: {len(teams)} teams, {len(games)} games this week ({sum(1 for g in games if g.get("odds"))} with odds, {len(espn_prob)} ESPN probable goalies, {sum(1 for g in games for k in ('away', 'home') if (g.get('goalies') or {}).get(k) and g['goalies'][k]['why'].startswith('Named the starter'))} NHL lineup starters), {len(need)} box scores, MySportsFeeds {MSF_STATUS} ({len(msf_pick)} goalies), {len(WARN)} warnings')
 for w in WARN[:10]:
     print('  warning:', w)
