@@ -6,3 +6,4 @@
 2026-10-27 VAN Kevin Lankinen expected
 2026-10-27 BUF Colten Ellis expected
 2026-10-27 SJS Yaroslav Askarov expected
+ICE 2026020196 OTT@VGK 2026-10-27
