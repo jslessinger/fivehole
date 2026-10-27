@@ -296,6 +296,9 @@ li.outp .plink{text-decoration:line-through}
 #plogTbl td:nth-child(3){color:var(--ink);font-size:inherit}
 #plogTbl th:nth-child(n+3),#plogTbl td:nth-child(n+3){text-align:right}
 .pcard h3 .tag{align-self:flex-start;white-space:nowrap}
+.players{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:900px){.players{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.players{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -527,7 +530,8 @@ function render(){
   $('plTitle').textContent=`Who benefits on the ${nick(off)}`;
   const byK=Object.fromEntries(results.map(x=>[x.r.k,x]));
   const RL=roles(off);
-  const cards=[{pos:'RB',kind:'rush',f:byK.rbRush.f,title:'RB rushing'},{pos:'RB',kind:'rec',f:byK.rbRec.f,title:'RB receiving'},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbPass.f}];
+  const cards=[{pos:'QB',kind:'pass',f:byK.qbPass.f,title:'QB passing'},{pos:'QB',kind:'rush',f:byK.qbRush.f,title:'QB rushing'},{pos:'RB',kind:'rush',f:byK.rbRush.f,title:'RB rushing'},
+    {pos:'RB',kind:'rec',f:byK.rbRec.f,title:'RB receiving'},{pos:'WR',title:'WR receiving <span class="hint" style="font-size:.8rem">by depth chart</span>'},{pos:'TE',f:byK.teRec.f,title:'TE receiving'}];
   $('players').innerHTML=cards.map(x=>{
     const pos=x.pos; const [cls,lab]=pos==='WR'?['','']:grade(x.f);
     let list=RL.lists[pos];
@@ -537,7 +541,7 @@ function render(){
       if(pos==='WR'){const rk=p.role;const gx=rk?grade(byK[rk].f):null;
         return `<li class="${p.out?'outp':''}"><span><button type="button" class="plink" data-pid="${p.p[7]}" data-pos="${pos}" data-role="${pos==='WR'?(p.role?ROLE_LABEL[p.role]:''):pos}" title="View game log">${n}</button>${st}<br><span class="hint">${rk?ROLE_LABEL[rk]:p.out?'Not playing':'Depth'} · ${fmt(cy/g)} yds/g · ${tg} tgts</span></span>${gx&&!p.out?`<span class="tag t-${gx[0]}" style="margin:0;align-self:center">${gx[1]}</span>`:''}</li>`;}
       const [,,,,,,,,,py,pa,pc,ptd,pint]=p.p;
-      const main=pos==='QB'?`${fmt((py||0)/g)} pass · ${fmt(ry/g)} rush yds/g<br><span class="hint">${pc||0}/${pa||0} · ${ptd||0} TD · ${pint||0} INT</span>`:pos==='RB'?(x.kind==='rec'?`${fmt(cy/g)} rec yds/g<br><span class="hint">${rec} rec · ${tg} tgts</span>`:`${fmt(ry/g)} rush yds/g<br><span class="hint">${c} car · ${c?fmt(ry/c):'—'} Y/A</span>`):`${fmt(cy/g)} yds/g · ${tg} tgts`;
+      const main=pos==='QB'?(x.kind==='rush'?`${fmt(ry/g)} rush yds/g<br><span class="hint">${c} car · ${c?fmt(ry/c):'—'} Y/A</span>`:`${fmt((py||0)/g)} pass yds/g<br><span class="hint">${pc||0}/${pa||0} · ${ptd||0} TD · ${pint||0} INT</span>`):pos==='RB'?(x.kind==='rec'?`${fmt(cy/g)} rec yds/g<br><span class="hint">${rec} rec · ${tg} tgts</span>`:`${fmt(ry/g)} rush yds/g<br><span class="hint">${c} car · ${c?fmt(ry/c):'—'} Y/A</span>`):`${fmt(cy/g)} rec yds/g<br><span class="hint">${rec} rec · ${tg} tgts</span>`;
       return `<li class="${p.out?'outp':''}"><span><button type="button" class="plink" data-pid="${p.p[7]}" data-pos="${pos}" data-role="${pos==='WR'?(p.role?ROLE_LABEL[p.role]:''):pos}" title="View game log">${n}</button>${st}</span><span>${main}</span></li>`}).join(''):'<li class="hint">No production recorded</li>';
     return `<div class="pcard"><h3>${x.title?x.title:pos==='WR'?'Wide receivers by depth chart':pos==='TE'?'Tight ends':'Quarterbacks'} ${lab?`<span class="tag t-${cls}" style="margin:0">${lab}</span>`:''}</h3><ul>${rowsH}</ul></div>`;
   }).join('');
