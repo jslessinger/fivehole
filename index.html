@@ -380,7 +380,7 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
   <div class="pcard dinj" id="dinj"></div>
 
   <h2 id="wkTitle">Defense game log</h2>
-  <p class="sub">The summary shows each position group’s totals per game; the tables under it show QB passing and break the totals out by player. Highlighted yardage is at least 20% above the league per-game average for that group.</p>
+  <p class="sub">The summary shows each position group’s totals per game; the tables under it show QB passing and break the totals out by player. Highlighted yardage is at least 20% above the league per-game average for that group. “Long” is the longest single rush or catch; in footer rows it’s the longest over the games shown.</p>
   <h3 class="logh">Game totals by position</h3>
   <div class="tablewrap"><table id="log"></table></div>
   <h3 class="logh">QB passing allowed</h3>
@@ -542,15 +542,18 @@ function renderSummary(){
   const nRush=LR.filter(isRush).length;
   const short=r=>({rbRush:'RB',qbRush:'QB',rbRec:'RB',teRec:'TE',wr3:'WR3+'})[r.k]||r.label;
   const cnt=r=>r.k==='qbRush'?27:r.c;
-  const cols=r=>isRush(r)?['Att','Yds','Y/A']:['Rec','Yds','Y/R'];
+  const cols=r=>isRush(r)?['Att','Yds','Y/A','Long']:['Rec','Yds','Y/R','Long'];
   const avgs=LR.map(r=>table('def',r.y).avg);
+  const LG={rbRush:['ru','RB'],qbRush:['ru','QB'],rbRec:['re','RB'],wr1:['re','WR1'],wr2:['re','WR2'],wr3:['re','WR3+'],teRec:['re','TE']};
+  const longOf=(w,r)=>{const [s,lab]=LG[r.k]||[];const rows=(((D.logr[def]||{})[w]||{})[s]||[]).filter(p=>p[1]===lab);const v=rows.map(p=>p[s==='ru'?5:6]).filter(x=>x!=null);return v.length?Math.max(...v):null;};
+  const lf=v=>v==null?'—':v;
   const rate=(y,n)=>n?fmt(y/n):'—';
   const sc=i=>i===nRush?' sect-rec':'';
-  let h=`<thead><tr><th rowspan="3">Week</th><th rowspan="3">Opponent</th><th colspan="${nRush*3}" class="grp sect">Rushing</th><th colspan="${(LR.length-nRush)*3}" class="grp sect sect-rec">Receiving</th></tr><tr>`+LR.map((r,i)=>`<th colspan="3" class="grp${sc(i)}">${short(r)}</th>`).join('')+'</tr><tr>'+LR.map((r,i)=>cols(r).map((c,j)=>`<th class="num${j===0?' gs'+sc(i):''}">${c}</th>`).join('')).join('')+'</tr></thead><tbody>';
+  let h=`<thead><tr><th rowspan="3">Week</th><th rowspan="3">Opponent</th><th colspan="${nRush*4}" class="grp sect">Rushing</th><th colspan="${(LR.length-nRush)*4}" class="grp sect sect-rec">Receiving</th></tr><tr>`+LR.map((r,i)=>`<th colspan="4" class="grp${sc(i)}">${short(r)}</th>`).join('')+'</tr><tr>'+LR.map((r,i)=>cols(r).map((c,j)=>`<th class="num${j===0?' gs'+sc(i):''}">${c}</th>`).join('')).join('')+'</tr></thead><tbody>';
   h+=wks.map(w=>{const v=D.def[def][w];return `<tr${lw.has(w)&&S.win==='l3'?' class="sel2"':''}><td>${w}</td><td>${oppOfWeek(def,w)}</td>`+LR.map((r,i)=>{const y=v[r.y],n=v[cnt(r)]||0;const c=y>=avgs[i]*1.2?'hot':y<=avgs[i]*0.8?'cold':'';
-    const extra=r.td!=null&&v[r.td]?` <small>${v[r.td]} TD</small>`:'';return `<td class="gs${sc(i)}">${n}</td><td class="${c}">${y}${extra}</td><td>${rate(y,n)}</td>`}).join('')+'</tr>'}).join('');
+    const extra=r.td!=null&&v[r.td]?` <small>${v[r.td]} TD</small>`:'';return `<td class="gs${sc(i)}">${n}</td><td class="${c}">${y}${extra}</td><td>${rate(y,n)}</td><td>${lf(longOf(w,r))}</td>`}).join('')+'</tr>'}).join('');
   const tot=idx=>fw.reduce((s,k)=>s+(D.def[def][k][idx]||0),0), g=fw.length||1;
-  h+=`</tbody><tfoot><tr><td colspan="2">Per game${S.win==='l3'?' (last 3)':''}</td>`+LR.map((r,i)=>{const y=tot(r.y),n=tot(cnt(r));return `<td class="gs${sc(i)}">${fmt(n/g)}</td><td>${fmt(y/g)}</td><td>${rate(y,n)}</td>`}).join('')+'</tr></tfoot>';
+  h+=`</tbody><tfoot><tr><td colspan="2">Per game${S.win==='l3'?' (last 3)':''}</td>`+LR.map((r,i)=>{const y=tot(r.y),n=tot(cnt(r));const lv=fw.map(w=>longOf(w,r)).filter(x=>x!=null);return `<td class="gs${sc(i)}">${fmt(n/g)}</td><td>${fmt(y/g)}</td><td>${rate(y,n)}</td><td>${lv.length?Math.max(...lv):'—'}</td>`}).join('')+'</tr></tfoot>';
   $('log').innerHTML=h;
 }
 const LOGF={ru:'All',re:'All'};
@@ -583,33 +586,36 @@ function renderLogs(){
   if(!wks.length){$('logRu').innerHTML=$('logRe').innerHTML='<tbody><tr><td class="empty">No games recorded yet.</td></tr></tbody>';return;}
   const keyRu={RB:'rbRush',QB:'qbRush'}, keyRe={RB:'rbRec',WR1:'wr1',WR2:'wr2','WR3+':'wr3',TE:'teRec'};
   // rushing
-  let ru='<thead><tr><th>Week</th><th>Opponent</th><th>Pos</th><th>Player</th><th>Att</th><th>Yds</th><th>Y/A</th><th>TD</th></tr></thead><tbody>';
-  const sR={RB:[0,0,0],QB:[0,0,0]};
+  let ru='<thead><tr><th>Week</th><th>Opponent</th><th>Pos</th><th>Player</th><th>Att</th><th>Yds</th><th>Y/A</th><th>Long</th><th>TD</th></tr></thead><tbody>';
+  const sR={RB:[0,0,0],QB:[0,0,0]}, lR={RB:null,QB:null};
+  const mx=(a,b)=>b==null?a:a==null?b:Math.max(a,b), lf=v=>v==null?'—':v;
   wks.forEach(w=>{
     const all=((D.logr[def]||{})[w]||{}).ru||[]; const rows=all.filter(p=>LOGF.ru==='All'||p[1]===LOGF.ru);
     const t=rows.reduce((a,p)=>[a[0]+p[2],a[1]+p[3],a[2]+p[4]],[0,0,0]);
-    all.forEach(p=>{const z=sR[p[1]];z[0]+=p[2];z[1]+=p[3];z[2]+=p[4];});
+    all.forEach(p=>{const z=sR[p[1]];z[0]+=p[2];z[1]+=p[3];z[2]+=p[4];lR[p[1]]=mx(lR[p[1]],p[5]);});
+    const tl=rows.reduce((a,p)=>mx(a,p[5]),null);
     const hot=LOGF.ru!=='All'&&t[1]>=avgRow(keyRu[LOGF.ru])*1.2;
-    ru+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${rate(p[3],p[2])}</td><td>${p[4]||''}</td></tr>`).join('')
-      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td class="${hot?'hot':''}">${t[1]}</td><td>${rate(t[1],t[0])}</td><td>${t[2]||''}</td></tr>`;
+    ru+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${rate(p[3],p[2])}</td><td>${lf(p[5])}</td><td>${p[4]||''}</td></tr>`).join('')
+      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td class="${hot?'hot':''}">${t[1]}</td><td>${rate(t[1],t[0])}</td><td>${lf(tl)}</td><td>${t[2]||''}</td></tr>`;
   });
   const g=wks.length;
-  const fr=(lab,z)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${rate(z[1],z[0])}</td><td>${fmt(z[2]/g)}</td></tr>`;
-  ru+='</tbody><tfoot>'+(LOGF.ru==='All'?['RB','QB']:[LOGF.ru]).map(k=>fr(`${k} per game${S.win==='l3'?' (last 3)':''}`,sR[k])).join('')+'</tfoot>';
+  const fr=(lab,z,l)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${rate(z[1],z[0])}</td><td>${lf(l)}</td><td>${fmt(z[2]/g)}</td></tr>`;
+  ru+='</tbody><tfoot>'+(LOGF.ru==='All'?['RB','QB']:[LOGF.ru]).map(k=>fr(`${k} per game${S.win==='l3'?' (last 3)':''}`,sR[k],lR[k])).join('')+'</tfoot>';
   $('logRu').innerHTML=ru;
   // receiving
-  let re='<thead><tr><th>Week</th><th>Opponent</th><th>Role</th><th>Player</th><th>Tgt</th><th>Rec</th><th>Yds</th><th>Y/R</th><th>TD</th></tr></thead><tbody>';
-  const sE={}; Object.keys(keyRe).forEach(k=>sE[k]=[0,0,0,0]);
+  let re='<thead><tr><th>Week</th><th>Opponent</th><th>Role</th><th>Player</th><th>Tgt</th><th>Rec</th><th>Yds</th><th>Y/R</th><th>Long</th><th>TD</th></tr></thead><tbody>';
+  const sE={}, lE={}; Object.keys(keyRe).forEach(k=>{sE[k]=[0,0,0,0];lE[k]=null;});
   wks.forEach(w=>{
     const all=((D.logr[def]||{})[w]||{}).re||[]; const rows=all.filter(p=>LOGF.re==='All'||p[1]===LOGF.re);
     const t=rows.reduce((a,p)=>[a[0]+p[2],a[1]+p[3],a[2]+p[4],a[3]+p[5]],[0,0,0,0]);
-    all.forEach(p=>{const z=sE[p[1]];for(let j=0;j<4;j++)z[j]+=p[j+2];});
+    all.forEach(p=>{const z=sE[p[1]];for(let j=0;j<4;j++)z[j]+=p[j+2];lE[p[1]]=mx(lE[p[1]],p[6]);});
+    const tl=rows.reduce((a,p)=>mx(a,p[6]),null);
     const hot=LOGF.re!=='All'&&t[2]>=avgRow(keyRe[LOGF.re])*1.2;
-    re+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td><td>${rate(p[4],p[3])}</td><td>${p[5]||''}</td></tr>`).join('')
-      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td>${t[1]}</td><td class="${hot?'hot':''}">${t[2]}</td><td>${rate(t[2],t[1])}</td><td>${t[3]||''}</td></tr>`;
+    re+=rows.map((p,i)=>`<tr${i===0?' class="gstart"':''}><td>${i===0?w:''}</td><td>${i===0?oppOfWeek(def,w):''}</td><td>${p[1]}</td><td>${p[0]}</td><td>${p[2]}</td><td>${p[3]}</td><td>${p[4]}</td><td>${rate(p[4],p[3])}</td><td>${lf(p[6])}</td><td>${p[5]||''}</td></tr>`).join('')
+      +`<tr class="gtot${rows.length?'':' gstart'}"><td>${rows.length?'':w}</td><td>${rows.length?'':oppOfWeek(def,w)}</td><td></td><td>Game total</td><td>${t[0]}</td><td>${t[1]}</td><td class="${hot?'hot':''}">${t[2]}</td><td>${rate(t[2],t[1])}</td><td>${lf(tl)}</td><td>${t[3]||''}</td></tr>`;
   });
-  const fe=(lab,z)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${fmt(z[2]/g)}</td><td>${rate(z[2],z[1])}</td><td>${fmt(z[3]/g)}</td></tr>`;
-  re+='</tbody><tfoot>'+(LOGF.re==='All'?Object.keys(keyRe):[LOGF.re]).map(k=>fe(`${k} per game${S.win==='l3'?' (last 3)':''}`,sE[k])).join('')+'</tfoot>';
+  const fe=(lab,z,l)=>`<tr><td colspan="4">${lab}</td><td>${fmt(z[0]/g)}</td><td>${fmt(z[1]/g)}</td><td>${fmt(z[2]/g)}</td><td>${rate(z[2],z[1])}</td><td>${lf(l)}</td><td>${fmt(z[3]/g)}</td></tr>`;
+  re+='</tbody><tfoot>'+(LOGF.re==='All'?Object.keys(keyRe):[LOGF.re]).map(k=>fe(`${k} per game${S.win==='l3'?' (last 3)':''}`,sE[k],lE[k])).join('')+'</tfoot>';
   $('logRe').innerHTML=re;
 }
 function renderLeague(){
