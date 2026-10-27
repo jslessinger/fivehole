@@ -380,9 +380,11 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
   <div class="pcard dinj" id="dinj"></div>
 
   <h2 id="wkTitle">Defense game log</h2>
-  <p class="sub">The summary shows each position group’s totals per game; the two tables under it break those totals out by player. Highlighted yardage is at least 20% above the league per-game average for that group.</p>
+  <p class="sub">The summary shows each position group’s totals per game; the tables under it show QB passing and break the totals out by player. Highlighted yardage is at least 20% above the league per-game average for that group.</p>
   <h3 class="logh">Game totals by position</h3>
   <div class="tablewrap"><table id="log"></table></div>
+  <h3 class="logh">QB passing allowed</h3>
+  <div class="tablewrap"><table id="logPa" class="glog"></table></div>
   <h3 class="logh">Rushing allowed, by player</h3>
   <div class="seg" id="segRu"></div>
   <div class="tablewrap"><table id="logRu" class="glog"></table></div>
@@ -439,7 +441,8 @@ const ROWS=[
   {k:'wr2',label:'WR2',sub:'Depth chart No. 2',y:19,c:20,cl:'catches',td:22,pos:'WR'},
   {k:'wr3',label:'WR3 and beyond',sub:'No. 3 and below',y:23,c:24,cl:'catches',td:26,pos:'WR'},
   {k:'teRec',label:'TE receiving',y:10,c:11,cl:'catches',td:13,pos:'TE',stat:'cy'},
-  {k:'qbRush',label:'QB rushing',y:14,pos:'QB',stat:'ry'}
+  {k:'qbRush',label:'QB rushing',y:14,pos:'QB',stat:'ry'},
+  {k:'qbPass',label:'QB passing',y:28,c:29,cl:'attempts',td:31,pos:'QB',stat:'py',log:false}
 ];
 const S={def:null,off:null,win:'season',lg:'rbRush'};
 const $=id=>document.getElementById(id);
@@ -452,7 +455,7 @@ function weeksOf(side,t,win){
 }
 function per(side,t,idx,win){
   const w=weeksOf(side,t,win); if(!w.length) return 0;
-  return w.reduce((s,k)=>s+D[side][t][k][idx],0)/w.length;
+  return w.reduce((s,k)=>s+(D[side][t][k][idx]||0),0)/w.length;
 }
 let CACHE={};
 function table(side,idx){
@@ -509,14 +512,15 @@ function render(){
   $('plTitle').textContent=`Who benefits on the ${nick(off)}`;
   const byK=Object.fromEntries(results.map(x=>[x.r.k,x]));
   const RL=roles(off);
-  const cards=[{pos:'RB',f:(byK.rbRush.f+byK.rbRec.f)/2},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbRush.f}];
+  const cards=[{pos:'RB',f:(byK.rbRush.f+byK.rbRec.f)/2},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbPass.f}];
   $('players').innerHTML=cards.map(x=>{
     const pos=x.pos; const list=RL.lists[pos]; const [cls,lab]=pos==='WR'?['','']:grade(x.f);
     const rowsH=list.length?list.slice(0,pos==='WR'?5:3).map(p=>{const [n,g,ry,cy,c,rec,tg]=p.p;
       const st=stTag(p);
       if(pos==='WR'){const rk=p.role;const gx=rk?grade(byK[rk].f):null;
         return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}<br><span class="hint">${rk?ROLE_LABEL[rk]:p.out?'Not playing':'Depth'} · ${fmt(cy/g)} yds/g · ${tg} tgts</span></span>${gx&&!p.out?`<span class="tag t-${gx[0]}" style="margin:0;align-self:center">${gx[1]}</span>`:''}</li>`;}
-      const main=pos==='QB'?`${fmt(ry/g)} rush yds/g`:pos==='RB'?`${fmt(ry/g)} rush · ${fmt(cy/g)} rec`:`${fmt(cy/g)} yds/g · ${tg} tgts`;
+      const [,,,,,,,,,py,pa,pc,ptd,pint]=p.p;
+      const main=pos==='QB'?`${fmt((py||0)/g)} pass · ${fmt(ry/g)} rush yds/g<br><span class="hint">${pc||0}/${pa||0} · ${ptd||0} TD · ${pint||0} INT</span>`:pos==='RB'?`${fmt(ry/g)} rush · ${fmt(cy/g)} rec`:`${fmt(cy/g)} yds/g · ${tg} tgts`;
       return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}</span><span>${main}</span></li>`}).join(''):'<li class="hint">No production recorded</li>';
     return `<div class="pcard"><h3>${pos==='RB'?'Running backs':pos==='WR'?'Wide receivers by depth chart':pos==='TE'?'Tight ends':'Quarterbacks'} ${lab?`<span class="tag t-${cls}" style="margin:0">${lab}</span>`:''}</h3><ul>${rowsH}</ul></div>`;
   }).join('');
@@ -550,7 +554,27 @@ function renderSummary(){
   $('log').innerHTML=h;
 }
 const LOGF={ru:'All',re:'All'};
+function renderPassLog(){
+  const def=S.def, wks=weeksOf('def',def,S.win);
+  if(!wks.length){$('logPa').innerHTML='<tbody><tr><td class="empty">No games recorded yet.</td></tr></tbody>';return;}
+  const avg=table('def',28).avg, rate=(y,n)=>n?fmt(y/n):'—', pc=(c,a)=>a?fmt(c/a*100)+'%':'—';
+  let h='<thead><tr><th>Week</th><th>Opponent</th><th>QB</th><th>Cmp/Att</th><th>Comp %</th><th>Yds</th><th>Y/A</th><th>TD</th><th>INT</th></tr></thead><tbody>';
+  const S5=[0,0,0,0,0];
+  wks.forEach(w=>{
+    const rows=((D.logr[def]||{})[w]||{}).pa||[];
+    const t=rows.reduce((a,p)=>[a[0]+p[1],a[1]+p[2],a[2]+p[3],a[3]+p[4],a[4]+p[5]],[0,0,0,0,0]);
+    t.forEach((v,j)=>S5[j]+=v);
+    const hot=t[2]>=avg*1.2?'hot':t[2]<=avg*0.8?'cold':'';
+    const line=(lab,v,first,cls)=>`<tr class="${first?'gstart':''}${cls?' '+cls:''}"><td>${first?w:''}</td><td>${first?oppOfWeek(def,w):''}</td><td>${lab}</td><td>${v[1]}/${v[0]}</td><td>${pc(v[1],v[0])}</td><td class="${cls==='gtot'||rows.length===1?hot:''}">${v[2]}</td><td>${rate(v[2],v[0])}</td><td>${v[3]||''}</td><td>${v[4]||''}</td></tr>`;
+    if(rows.length===1) h+=line(rows[0][0],rows[0].slice(1),true,'');
+    else h+=rows.map((p,i)=>line(p[0],p.slice(1),i===0,'')).join('')+line('Game total',t,!rows.length,'gtot');
+  });
+  const g=wks.length;
+  h+=`</tbody><tfoot><tr><td colspan="3">Per game${S.win==='l3'?' (last 3)':''}</td><td>${fmt(S5[1]/g)}/${fmt(S5[0]/g)}</td><td>${pc(S5[1],S5[0])}</td><td>${fmt(S5[2]/g)}</td><td>${rate(S5[2],S5[0])}</td><td>${fmt(S5[3]/g)}</td><td>${fmt(S5[4]/g)}</td></tr></tfoot>`;
+  $('logPa').innerHTML=h;
+}
 function renderLogs(){
+  renderPassLog();
   const def=S.def, wks=weeksOf('def',def,S.win);
   const avgRow=k=>table('def',ROWS.find(r=>r.k===k).y).avg;
   const rate=(y,n)=>n?fmt(y/n):'—';
@@ -590,6 +614,14 @@ function renderLogs(){
 }
 function renderLeague(){
   const r=ROWS.find(x=>x.k===S.lg); const T=table('def',r.y);
+  if(r.k==='qbPass'){
+    $('seg').innerHTML=ROWS.map(x=>`<button type="button" data-lg="${x.k}" aria-pressed="${x.k===S.lg}">${x.label}</button>`).join('');
+    $('league').innerHTML='<thead><tr><th>Rank</th><th>Defense</th><th>Pass yds/g allowed</th><th>vs avg</th><th>Cmp/Att per game</th><th>Comp %</th><th>Y/A</th><th>TD</th><th>INT</th></tr></thead><tbody>'+
+      T.sorted.map((o,i)=>{const w=weeksOf('def',o.t,S.win);const sum=idx=>w.reduce((s,k)=>s+(D.def[o.t][k][idx]||0),0);const n=w.length||1;
+        const y=sum(28),a=sum(29),c=sum(30);const pct=Math.round((o.v/T.avg-1)*100);
+        return `<tr class="${o.t===S.def?'sel':''}${o.t===S.off?' sel2':''}"><td>${i+1}</td><td>${NAMES[o.t]}${o.t===S.def?' · your defense':''}${o.t===S.off?' · opponent':''}</td><td>${fmt(o.v)}</td><td class="${pct>=10?'hot':pct<=-10?'cold':''}">${pct>0?'+':''}${pct}%</td><td>${fmt(c/n)}/${fmt(a/n)}</td><td>${a?fmt(c/a*100):'—'}%</td><td>${a?fmt(y/a):'—'}</td><td>${sum(31)}</td><td>${sum(32)}</td></tr>`}).join('')+'</tbody>';
+    return;
+  }
   $('seg').innerHTML=ROWS.map(x=>`<button type="button" data-lg="${x.k}" aria-pressed="${x.k===S.lg}">${x.label}</button>`).join('');
   $('league').innerHTML='<thead><tr><th>Rank</th><th>Defense</th><th>Yds/g allowed</th><th>vs avg</th>'+(r.c!=null?`<th>${r.cl}/g</th>`:'')+'<th>TDs</th></tr></thead><tbody>'+
     T.sorted.map((o,i)=>{const w=weeksOf('def',o.t,S.win);const sum=idx=>w.reduce((s,k)=>s+D.def[o.t][k][idx],0);
@@ -626,8 +658,8 @@ function openMatch(def,off){
 }
 
 const CUR=(D.schedule.find(s=>s[4]==null)||D.schedule[D.schedule.length-1])[0];
-const BET_MIN={rbRush:35,rbRec:15,wr1:40,wr2:30,wr3:20,teRec:25,qbRush:15};
-const ROLE_LABEL={rbRush:'RB rushing',rbRec:'RB receiving',wr1:'WR1',wr2:'WR2',wr3:'WR3+',teRec:'TE receiving',qbRush:'QB rushing'};
+const BET_MIN={rbRush:35,rbRec:15,wr1:40,wr2:30,wr3:20,teRec:25,qbRush:15,qbPass:180};
+const ROLE_LABEL={rbRush:'RB rushing',rbRec:'RB receiving',wr1:'WR1',wr2:'WR2',wr3:'WR3+',teRec:'TE receiving',qbRush:'QB rushing',qbPass:'QB passing'};
 const OUT=new Set(['Out','IR','Traded','Released','Inactive','Doubtful']);
 const stOf=p=>(D.status||{})[p[7]]||null;
 function stTag(x){if(!x.st) return '';const s=x.st[0];return ` <span class="st st-${s.toLowerCase()}" title="${x.st[1]||''}">${s==='IR'?'IR':s}</span>`;}
@@ -641,21 +673,21 @@ function roles(off){
   const firstOut=(k,i)=>lists[k].slice(0,i).filter(x=>x.out);
   pick.wr1=wa[0];pick.wr2=wa[1];pick.wr3=wa[2];
   const rb=avail('RB'); pick.rbRush=rb[0]; pick.rbRec=[...rb].sort((a,b)=>b.p[3]/b.p[1]-a.p[3]/a.p[1])[0];
-  pick.teRec=avail('TE')[0]; pick.qbRush=avail('QB')[0];
+  pick.teRec=avail('TE')[0]; pick.qbRush=avail('QB')[0]; pick.qbPass=avail('QB')[0];
   const missing={};
   const outBy=k=>lists[k].filter(x=>x.out&&x.p[1]>=2);
   missing.WR=outBy('WR').filter(x=>lists.WR.indexOf(x)<3); missing.RB=outBy('RB').filter(x=>lists.RB.indexOf(x)<1);
   missing.TE=outBy('TE').filter(x=>lists.TE.indexOf(x)<1); missing.QB=lists.QB.filter(x=>x.out&&lists.QB.indexOf(x)<1);
   return {lists,pick,missing};
 }
-const POS_OF={rbRush:'RB',rbRec:'RB',wr1:'WR',wr2:'WR',wr3:'WR',teRec:'TE',qbRush:'QB'};
+const POS_OF={rbRush:'RB',rbRec:'RB',wr1:'WR',wr2:'WR',wr3:'WR',teRec:'TE',qbRush:'QB',qbPass:'QB'};
 function playerFor(off,k){
   const RL=roles(off); const x=RL.pick[k]; if(!x) return null;
   const [n,g,ry,cy]=x.p; const pos=POS_OF[k];
   const L=RL.lists[pos], xi=L.indexOf(x);
   const miss=L.filter((m,i)=>m.out&&i<xi&&m.p[1]>=2);
   const note=miss.length?`${miss.map(m=>`${m.p[0]} (${m.st[0]==='IR'?'IR':m.st[0].toLowerCase()})`).join(', ')} ${miss.length>1?'are':'is'} sidelined, so ${n} steps in.`:'';
-  return {name:n,pg:(['rbRush','qbRush'].includes(k)?ry:cy)/g,st:x.st,note};
+  return {name:n,pg:(k==='qbPass'?(x.p[9]||0):['rbRush','qbRush'].includes(k)?ry:cy)/g,st:x.st,note};
 }
 function bestBets(){
   const out=[];
@@ -681,7 +713,7 @@ let BETF='all';
 function renderBets(){
   const all=bestBets();
   $('betsTitle').textContent=`Week ${CUR} best bets`;
-  const keys=['all','rbRush','rbRec','wr1','wr2','wr3','teRec','qbRush'];
+  const keys=['all','qbPass','rbRush','rbRec','wr1','wr2','wr3','teRec','qbRush'];
   $('betSeg').innerHTML=keys.map(k=>`<button type="button" data-bf="${k}" aria-pressed="${BETF===k}">${k==='all'?'All positions':ROLE_LABEL[k]}</button>`).join('');
   const list=all.filter(b=>BETF==='all'||b.k===BETF).slice(0,20);
   $('bets').innerHTML=list.length?list.map(b=>{const [c,l]=grade(b.f);const s=b.game;
