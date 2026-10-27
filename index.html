@@ -282,6 +282,20 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
 .nhl-game.ice .gh b{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .nhl-game.ice .gh b .icechip{margin-left:0;vertical-align:0}
 .nhl-game.ice .gh>span{text-align:right}
+
+.plink{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--ink);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.plink:hover{color:var(--hot);text-decoration-color:var(--hot)}
+li.outp .plink{text-decoration:line-through}
+#plogDlg{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--ink);padding:18px;width:min(760px,calc(100vw - 24px));max-height:85vh;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+#plogDlg::backdrop{background:rgba(10,14,20,.45)}
+.plhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.plhead h3{margin:0;font:400 1.4rem "Graduate","Rockwell",serif}
+.plhead p{margin:2px 0 0}
+.plx{border:1px solid var(--line);border-radius:999px;width:34px;height:34px;padding:0;font-size:1.3rem;line-height:1}
+#plogTbl{min-width:520px}
+#plogTbl td:nth-child(3){color:var(--ink);font-size:inherit}
+#plogTbl th:nth-child(n+3),#plogTbl td:nth-child(n+3){text-align:right}
+.pcard h3 .tag{align-self:flex-start;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -375,7 +389,7 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
   <div class="rows" id="rows"></div>
 
   <h2 id="plTitle">Who benefits</h2>
-  <p class="sub">The opposing offense’s top producers at each position, season per-game yards, with this week’s injury report. Players who are out, doubtful or on injured reserve are greyed out, and the next man up takes their role.</p>
+  <p class="sub">The opposing offense’s top producers at each position, season per-game yards, with this week’s injury report. Click a player’s name to see his game log. Players who are out, doubtful or on injured reserve are greyed out, and the next man up takes their role.</p>
   <div class="players" id="players"></div>
   <div class="pcard dinj" id="dinj"></div>
 
@@ -414,6 +428,7 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
     <div id="nhlGame"></div>
   </section>
 
+  <dialog id="plogDlg" aria-labelledby="plogTitle"><div class="plhead"><div><h3 id="plogTitle"></h3><p class="hint" id="plogSub"></p></div><button type="button" class="plx" id="plogClose" aria-label="Close">×</button></div><div class="tablewrap"><table id="plogTbl" class="glog"></table></div></dialog>
   <footer id="foot"></footer>
 </div>
 
@@ -512,17 +527,19 @@ function render(){
   $('plTitle').textContent=`Who benefits on the ${nick(off)}`;
   const byK=Object.fromEntries(results.map(x=>[x.r.k,x]));
   const RL=roles(off);
-  const cards=[{pos:'RB',f:(byK.rbRush.f+byK.rbRec.f)/2},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbPass.f}];
+  const cards=[{pos:'RB',kind:'rush',f:byK.rbRush.f,title:'RB rushing'},{pos:'RB',kind:'rec',f:byK.rbRec.f,title:'RB receiving'},{pos:'WR'},{pos:'TE',f:byK.teRec.f},{pos:'QB',f:byK.qbPass.f}];
   $('players').innerHTML=cards.map(x=>{
-    const pos=x.pos; const list=RL.lists[pos]; const [cls,lab]=pos==='WR'?['','']:grade(x.f);
+    const pos=x.pos; const [cls,lab]=pos==='WR'?['','']:grade(x.f);
+    let list=RL.lists[pos];
+    if(x.kind==='rec') list=[...list].sort((a,b)=>(a.out-b.out)||(b.p[3]/b.p[1]-a.p[3]/a.p[1]));
     const rowsH=list.length?list.slice(0,pos==='WR'?5:3).map(p=>{const [n,g,ry,cy,c,rec,tg]=p.p;
       const st=stTag(p);
       if(pos==='WR'){const rk=p.role;const gx=rk?grade(byK[rk].f):null;
-        return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}<br><span class="hint">${rk?ROLE_LABEL[rk]:p.out?'Not playing':'Depth'} · ${fmt(cy/g)} yds/g · ${tg} tgts</span></span>${gx&&!p.out?`<span class="tag t-${gx[0]}" style="margin:0;align-self:center">${gx[1]}</span>`:''}</li>`;}
+        return `<li class="${p.out?'outp':''}"><span><button type="button" class="plink" data-pid="${p.p[7]}" data-pos="${pos}" data-role="${pos==='WR'?(p.role?ROLE_LABEL[p.role]:''):pos}" title="View game log">${n}</button>${st}<br><span class="hint">${rk?ROLE_LABEL[rk]:p.out?'Not playing':'Depth'} · ${fmt(cy/g)} yds/g · ${tg} tgts</span></span>${gx&&!p.out?`<span class="tag t-${gx[0]}" style="margin:0;align-self:center">${gx[1]}</span>`:''}</li>`;}
       const [,,,,,,,,,py,pa,pc,ptd,pint]=p.p;
-      const main=pos==='QB'?`${fmt((py||0)/g)} pass · ${fmt(ry/g)} rush yds/g<br><span class="hint">${pc||0}/${pa||0} · ${ptd||0} TD · ${pint||0} INT</span>`:pos==='RB'?`${fmt(ry/g)} rush · ${fmt(cy/g)} rec`:`${fmt(cy/g)} yds/g · ${tg} tgts`;
-      return `<li class="${p.out?'outp':''}"><span><b>${n}</b>${st}</span><span>${main}</span></li>`}).join(''):'<li class="hint">No production recorded</li>';
-    return `<div class="pcard"><h3>${pos==='RB'?'Running backs':pos==='WR'?'Wide receivers by depth chart':pos==='TE'?'Tight ends':'Quarterbacks'} ${lab?`<span class="tag t-${cls}" style="margin:0">${lab}</span>`:''}</h3><ul>${rowsH}</ul></div>`;
+      const main=pos==='QB'?`${fmt((py||0)/g)} pass · ${fmt(ry/g)} rush yds/g<br><span class="hint">${pc||0}/${pa||0} · ${ptd||0} TD · ${pint||0} INT</span>`:pos==='RB'?(x.kind==='rec'?`${fmt(cy/g)} rec yds/g<br><span class="hint">${rec} rec · ${tg} tgts</span>`:`${fmt(ry/g)} rush yds/g<br><span class="hint">${c} car · ${c?fmt(ry/c):'—'} Y/A</span>`):`${fmt(cy/g)} yds/g · ${tg} tgts`;
+      return `<li class="${p.out?'outp':''}"><span><button type="button" class="plink" data-pid="${p.p[7]}" data-pos="${pos}" data-role="${pos==='WR'?(p.role?ROLE_LABEL[p.role]:''):pos}" title="View game log">${n}</button>${st}</span><span>${main}</span></li>`}).join(''):'<li class="hint">No production recorded</li>';
+    return `<div class="pcard"><h3>${x.title?x.title:pos==='WR'?'Wide receivers by depth chart':pos==='TE'?'Tight ends':'Quarterbacks'} ${lab?`<span class="tag t-${cls}" style="margin:0">${lab}</span>`:''}</h3><ul>${rowsH}</ul></div>`;
   }).join('');
   const DI=(D.dinj[def]||[]);
   $('dinj').innerHTML=DI.length?`<h3>${nick(def)} defense injury report <span class="hint">Week ${D.injWeek}</span></h3><ul>${DI.map(x=>`<li><span><b>${x[0]}</b> <span class="hint">${x[1]}${x[4]?' · '+x[4]:''}</span></span><span class="st st-${x[3].toLowerCase()}">${x[3]}</span></li>`).join('')}</ul>`:`<h3>${nick(def)} defense injury report</h3><p class="hint" style="margin:0">No defensive players listed for Week ${D.injWeek}.</p>`;
@@ -997,6 +1014,32 @@ async function setIce(g,on){
   }catch(err){m.textContent=err.message;$('iceToggle').disabled=false;}
 }
 
+// ============== player game log popup ==============
+function openPlog(pid,pos,role){
+  const L=(D.plog||{})[pid]||[]; const team=S.off;
+  const all=Object.values(D.players[team]||{}).flat(); const pl=all.find(x=>x[7]===pid)||[pid];
+  $('plogTitle').textContent=pl[0];
+  $('plogSub').textContent=`${NAMES[team]} · ${role||pos} · faces the ${nick(S.def)} defense next${L.length?'':' · no games played yet'}`;
+  const rate=(y,n)=>n?fmt(y/n):'—', lf=v=>v==null?'—':v, mx=a=>{const v=a.filter(x=>x!=null);return v.length?Math.max(...v):'—';};
+  const sum=i=>L.reduce((s,r)=>s+r[i],0), g=L.length||1, opp=r=>`${r[2]?'vs':'@'} ${r[1]}`;
+  let head,row,foot;
+  if(pos==='QB'){
+    head=['Wk','Opp','Cmp/Att','Pass Yds','Y/A','TD','INT','Rush','Rush Yds','Long'];
+    row=r=>[r[0],opp(r),`${r[12]}/${r[13]}`,r[14],rate(r[14],r[13]),r[15]||'',r[16]||'',r[3],r[4],lf(r[6])];
+    foot=['Per game','',`${fmt(sum(12)/g)}/${fmt(sum(13)/g)}`,fmt(sum(14)/g),rate(sum(14),sum(13)),fmt(sum(15)/g),fmt(sum(16)/g),fmt(sum(3)/g),fmt(sum(4)/g),mx(L.map(r=>r[6]))];
+  }else if(pos==='RB'){
+    head=['Wk','Opp','Att','Yds','Y/A','Long','TD','Tgt','Rec','Rec Yds','Long','TD'];
+    row=r=>[r[0],opp(r),r[3],r[4],rate(r[4],r[3]),lf(r[6]),r[5]||'',r[7],r[8],r[9],lf(r[11]),r[10]||''];
+    foot=['Per game','',fmt(sum(3)/g),fmt(sum(4)/g),rate(sum(4),sum(3)),mx(L.map(r=>r[6])),fmt(sum(5)/g),fmt(sum(7)/g),fmt(sum(8)/g),fmt(sum(9)/g),mx(L.map(r=>r[11])),fmt(sum(10)/g)];
+  }else{
+    head=['Wk','Opp','Tgt','Rec','Yds','Y/R','Long','TD'];
+    row=r=>[r[0],opp(r),r[7],r[8],r[9],rate(r[9],r[8]),lf(r[11]),r[10]||''];
+    foot=['Per game','',fmt(sum(7)/g),fmt(sum(8)/g),fmt(sum(9)/g),rate(sum(9),sum(8)),mx(L.map(r=>r[11])),fmt(sum(10)/g)];
+  }
+  $('plogTbl').innerHTML=`<thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${L.length?L.map(r=>`<tr>${row(r).map(x=>`<td>${x}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${head.length}" class="empty">No games this season.</td></tr>`}</tbody>${L.length?`<tfoot><tr>${foot.map(x=>`<td>${x}</td>`).join('')}</tr></tfoot>`:''}`;
+  const dlg=$('plogDlg'); if(dlg.showModal&&!dlg.open) dlg.showModal(); else dlg.setAttribute('open','');
+}
+
 const VIEWS={home:'landView',board:'homeView',bets:'betsView',detail:'detailView',nhl:'nhlBoardView',nhlGame:'nhlGameView'};
 function show(v){
   Object.entries(VIEWS).forEach(([k,id])=>$(id).hidden=k!==v);
@@ -1040,6 +1083,9 @@ function init(){
   $('nhlGame').addEventListener('click',e=>{const a=e.target.closest('[data-edact]');if(a){editorAction(a);return;}});
   $('nhlGame').addEventListener('change',e=>{if(e.target.id==='iceToggle'){const g=N.games.find(x=>String(x.id)===String(NGID));if(g) setIce(g,e.target.checked);}});
   $('nhlGame').addEventListener('click',e=>{const b=e.target.closest('[data-glt]');if(!b) return;const [k,id]=b.dataset.glt.split(':');GLSEL[k]=Number(id);const g=N.games.find(x=>String(x.id)===String(NGID));$('glogs').innerHTML=glogSection(g);});
+  $('players').addEventListener('click',e=>{const b=e.target.closest('.plink');if(b) openPlog(b.dataset.pid,b.dataset.pos,b.dataset.role);});
+  $('plogClose').onclick=()=>$('plogDlg').close();
+  $('plogDlg').addEventListener('click',e=>{if(e.target.id==='plogDlg') $('plogDlg').close();});
   $('nhlDays').addEventListener('click',e=>{const b=e.target.closest('[data-nday]');if(b){NDAY=b.dataset.nday;renderNhlBoard();}});
   const og=e=>{const c=e.target.closest('[data-ngame]');if(c) openNhlGame(c.dataset.ngame);};
   $('nhlGames').addEventListener('click',og);
