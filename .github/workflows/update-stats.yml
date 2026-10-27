@@ -9,9 +9,7 @@ on:
     - cron: "30 5 * * 1"      # after Sunday Night Football
     - cron: "30 5 * * 2"      # after Monday Night Football
     - cron: "0 22 * * 3,4,5"  # after midweek injury reports
-    - cron: "15 * * * *"      # hourly: NHL scores, goalies, injuries and odds
-    - cron: "*/10 22,23 * * *"  # every 10 min, ~6-8 PM Eastern: official starting goalies
-    - cron: "*/10 0-4 * * *"    # every 10 min, ~8 PM-midnight Eastern
+    - cron: "*/10 * * * *"    # every 10 minutes, all day: NHL scores, goalies, injuries and odds
   workflow_dispatch: {}        # "Run workflow" button on the Actions tab
   push:
     branches: [main]           # republish whenever you change the site
@@ -39,7 +37,7 @@ jobs:
         run: pip install "pandas>=2.2,<3"
 
       - name: Build NFL data (data.json)
-        if: github.event.schedule != '15 * * * *' && !contains(github.event.schedule, '*/10') && !startsWith(github.event.head_commit.message, 'Goalie:')
+        if: ${{ !contains(github.event.schedule, '*/10') && !startsWith(github.event.head_commit.message, 'Goalie:') }}
         continue-on-error: true
         run: python scripts/build_data.py
 
