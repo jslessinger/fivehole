@@ -350,41 +350,63 @@ def project(ab, game):
         gl_ = match_goalie(ab, m['name'])
         src = 'MySportsFeeds lists him in the starting lineup.' if m['status'] == 'Confirmed' else 'MySportsFeeds lists him as the expected starter.'
         return {'id': gl_['id'] if gl_ else None, 'name': gl_['name'] if gl_ else m['name'], 'status': m['status'], 'why': src}
+    mo = manual.get((game['id'], ab))
+    if mo:
+        gl_ = match_goalie(ab, mo['name'])
+        return {'id': gl_['id'] if gl_ else None, 'name': gl_['name'] if gl_ else mo['name'], 'status': mo['status'],
+                'why': 'Confirmed by the team or reporters (entered on Five Hole).' if mo['status'] == 'Confirmed'
+                else 'Expected to start, based on reports (entered on Five Hole).'}
     e = espn_prob.get((game['id'], ab))
     if e:
         gl_ = match_goalie(ab, e['name'])
         return {'id': gl_['id'] if gl_ else None, 'name': gl_['name'] if gl_ else e['name'], 'status': e['status'],
                 'why': 'ESPN lists him as the confirmed starter.' if e['status'] == 'Confirmed' else 'ESPN lists him as the probable starter.'}
+    return model_pick(ab, game)
+
+
+HIST = {ab: [(x['date'], (x.get('goalie') or {}).get('id')) for x in reversed(t['last7'])] for ab, t in teams.items()}
+
+
+def model_pick(ab, game):
+    """Five Hole's own pick. Uses the team's recent starts in order, including this
+    week's earlier projected games, so back-to-backs and tandems are handled."""
+    t = teams[ab]
+    hist = HIST[ab]
     healthy = [g for g in t['goalies'] if not unavailable(ab, g['name'])]
     out = [g['name'] for g in t['goalies'] if unavailable(ab, g['name'])]
     if not healthy:
         return None
-    log = t['last7']
-    starts = {}
-    for i, gm in enumerate(log):
-        if gm.get('goalie') and gm['goalie'].get('id'):
-            gid = gm['goalie']['id']
-            starts.setdefault(gid, [0, i])
-            starts[gid][0] += 1
-    ranked = sorted(healthy, key=lambda g: (-starts.get(g['id'], [0, 99])[0], starts.get(g['id'], [0, 99])[1], -g['gs']))
-    pick = ranked[0]
-    n_st = starts.get(pick['id'], [0])[0]
-    if not log:
-        why = 'Most starts this season.'
-    elif n_st:
-        why = f"Started {n_st} of the last {len(log)} games."
-    else:
-        why = 'No recent starts, but the healthiest option on the current roster.'
-    # back-to-back: if the team played the day before and our pick started it, lean to the backup
+    ids = {g['id'] for g in healthy}
+    name = lambda gid: next((g['name'] for g in t['goalies'] if g['id'] == gid), 'the other goalie')
+    recent = [gid for _, gid in hist[-10:] if gid]
+    n = len(recent)
+    share = {g['id']: (recent.count(g['id']) / n if n else 0) for g in healthy}
+    ranked = sorted(healthy, key=lambda g: (-share[g['id']], -g['gs']))
+    top = ranked[0]
+    last_d, last_g = hist[-1] if hist else (None, None)
     try:
-        gday = datetime.date.fromisoformat(game['date'])
-        prev = log[0] if log else None
-        if prev and datetime.date.fromisoformat(prev['date']) == gday - datetime.timedelta(days=1):
-            if prev.get('goalie') and prev['goalie'].get('id') == pick['id'] and len(ranked) > 1:
-                pick = sorted(ranked[1:], key=lambda g: -g['gs'])[0]
-                why = 'Second night of a back-to-back; the usual starter played yesterday.'
+        b2b = bool(last_d) and datetime.date.fromisoformat(last_d) == datetime.date.fromisoformat(game['date']) - datetime.timedelta(days=1)
     except (ValueError, TypeError):
-        pass
+        b2b = False
+    if b2b and last_g in ids and len(healthy) > 1:
+        pick = sorted([g for g in healthy if g['id'] != last_g], key=lambda g: (-share[g['id']], -g['gs']))[0]
+        why = f"Second night of a back-to-back, and {name(last_g)} is in net the night before."
+    elif not n:
+        pick = sorted(healthy, key=lambda g: -g['gs'])[0]
+        why = 'Most starts this season.'
+    elif share[top['id']] >= 0.65:
+        pick = top
+        why = f"Clear No. 1: started {recent.count(top['id'])} of the last {n} games."
+    else:
+        alt = [g for g in ranked if g['id'] != last_g and share[g['id']] >= 0.25]
+        if last_g in ids and alt:
+            pick = alt[0]
+            why = (f"Close call. {pick['name']} and {name(last_g)} have split the net "
+                   f"({recent.count(pick['id'])} and {recent.count(last_g)} of the last {n} starts), "
+                   f"and {name(last_g)} had the previous game.")
+        else:
+            pick = top
+            why = f"Started {recent.count(top['id'])} of the last {n} games."
     if out:
         why += ' ' + ', '.join(out) + (' is' if len(out) == 1 else ' are') + ' unavailable.'
     return {'id': pick['id'], 'name': pick['name'], 'status': 'Projected', 'why': why}
@@ -495,9 +517,57 @@ for day in sorted({g['date'] for g in games if g.get('date')}):
                 od['updated'] = ODDS_AT
                 g['odds'] = od
 
-for g in games:
+
+# ------------------------------------------------ manual goalie overrides
+# goalies.txt in the repository root. One line per goalie, for example:
+#   PHI Joseph Woll                      (next PHI game, Confirmed)
+#   PHI Joseph Woll expected             (next PHI game, Expected)
+#   2026-10-28 PHI Dan Vladar confirmed  (a specific date)
+manual = {}    # (game id, team) -> {'name', 'status'}
+MANUAL_LINES = 0
+
+
+def load_manual():
+    global MANUAL_LINES
+    path = os.path.join(ROOT, 'goalies.txt')
+    if not os.path.exists(path):
+        return
+    for raw in open(path, encoding='utf-8'):
+        line = raw.split('#', 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        day = None
+        if parts and len(parts[0]) == 10 and parts[0][4] == '-':
+            day, parts = parts[0], parts[1:]
+        if len(parts) < 2:
+            continue
+        ab = parts[0].upper()
+        status = 'Confirmed'
+        if parts[-1].lower() in ('confirmed', 'expected'):
+            status = parts[-1].capitalize()
+            parts = parts[:-1]
+        name = ' '.join(parts[1:])
+        if ab not in teams or not name:
+            WARN.append(f'goalies.txt: could not read "{raw.strip()}"')
+            continue
+        mine = sorted([g for g in games if ab in (g['home'], g['away']) and g['state'] not in ('OFF', 'FINAL')],
+                      key=lambda g: g.get('start') or g['date'])
+        if day:
+            mine = [g for g in mine if g['date'] == day]
+        if not mine:
+            continue
+        manual[(mine[0]['id'], ab)] = {'name': name, 'status': status}
+        MANUAL_LINES += 1
+
+load_manual()
+for g in sorted(games, key=lambda x: (x.get('start') or '', x.get('date') or '')):
     if g['away'] in teams and g['home'] in teams:
         g['goalies'] = {'away': project(g['away'], g), 'home': project(g['home'], g)}
+        for side in ('away', 'home'):
+            ab_, p_ = g[side], g['goalies'][side]
+            if p_ and not any(d == g['date'] for d, _ in HIST[ab_]):
+                HIST[ab_].append((g['date'], p_.get('id')))
 
 data = {
     'asOf': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),
@@ -505,6 +575,6 @@ data = {
 }
 with open(OUT, 'w') as f:
     json.dump(data, f, separators=(',', ':'))
-print(f'wrote {OUT}: {len(teams)} teams, {len(games)} games this week ({sum(1 for g in games if g.get("odds"))} with odds, {len(espn_prob)} ESPN probable goalies, {sum(1 for g in games for k in ('away', 'home') if (g.get('goalies') or {}).get(k) and g['goalies'][k]['why'].startswith('Named the starter'))} NHL lineup starters), {len(need)} box scores, MySportsFeeds {MSF_STATUS} ({len(msf_pick)} goalies), {len(WARN)} warnings')
+print(f'wrote {OUT}: {len(teams)} teams, {len(games)} games this week ({sum(1 for g in games if g.get("odds"))} with odds, {len(espn_prob)} ESPN probable goalies, {sum(1 for g in games for k in ('away', 'home') if (g.get('goalies') or {}).get(k) and g['goalies'][k]['why'].startswith('Named the starter'))} NHL lineup starters), {len(need)} box scores, MySportsFeeds {MSF_STATUS} ({len(msf_pick)} goalies), {MANUAL_LINES} manual goalies, {len(WARN)} warnings')
 for w in WARN[:10]:
     print('  warning:', w)
