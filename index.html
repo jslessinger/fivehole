@@ -301,6 +301,16 @@ li.outp .plink{text-decoration:line-through}
 @media (max-width:560px){.players{grid-template-columns:1fr}}
 table.h2h{min-width:560px}
 table.h2h td,table.h2h th{text-align:left}
+
+.gstrip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:4px 2px 10px;margin:12px 0 4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.gchip{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow)}
+.gchip b{font:400 1rem "Graduate","Rockwell",serif;white-space:nowrap}
+.gchip span{font-size:.75rem;color:var(--muted);white-space:nowrap}
+.gchip:hover{border-color:var(--hot)}
+.gchip[aria-current="true"]{background:var(--ink);border-color:var(--ink)}
+.gchip[aria-current="true"] b,.gchip[aria-current="true"] span{color:var(--bg)}
+.gchip-gold{border-color:#C9A227}
+.gchip-ice{border:2px solid #7CC6EE;box-shadow:0 0 10px rgba(102,184,240,.45)}
 </style>
 </head>
 <body>
@@ -374,6 +384,7 @@ table.h2h td,table.h2h th{text-align:left}
 
   <section id="detailView" hidden>
   <button type="button" id="back" class="back">‹ The Gridiron · Week <span id="backWk"></span></button>
+  <nav class="gstrip" id="nflStrip" aria-label="Other games this week"></nav>
 
   <div class="pick">
     <div><label for="defSel">Defense</label><select id="defSel"></select></div>
@@ -430,6 +441,7 @@ table.h2h td,table.h2h th{text-align:left}
 
   <section id="nhlGameView" hidden>
     <button type="button" class="back" data-view="nhl">‹ Back to The Crease</button>
+    <nav class="gstrip" id="nhlStrip" aria-label="Other games today"></nav>
     <div id="nhlGame"></div>
   </section>
 
@@ -861,6 +873,7 @@ function renderNhlGame(id){
   const iceBanner=g.ice?`<div class="icebanner">${iceDeco(g.id+7,44)}<b>❄ ICE GAME</b><span>Five Hole’s pick of the night.</span></div>`:'';
   const iceEdit=ED.token&&g.state!=='OFF'&&g.state!=='FINAL'?`<label class="iceedit"><input type="checkbox" id="iceToggle" ${g.ice?'checked':''}> Make this the ICE game <span class="hint" id="iceMsg"></span></label>`:'';
   const b2bTxt=[b2bA?`${A.name} played yesterday (back-to-back)`:'',b2bH?`${H.name} played yesterday (back-to-back)`:''].filter(Boolean).join(' · ');
+  renderNhlStrip(g);
   $('nhlGame').innerHTML=`${iceBanner}${iceEdit}<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
     <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
     <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN or from reports. Starters reported by teams or reporters can also be entered on Five Hole as Confirmed or Expected. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
@@ -1062,6 +1075,21 @@ function openPlog(pid,pos,role){
   const dlg=$('plogDlg'); if(dlg.showModal&&!dlg.open) dlg.showModal(); else dlg.setAttribute('open','');
 }
 
+// ============== game quick-link strips ==============
+function centerStrip(id){const el=$(id).querySelector('[aria-current="true"]');if(el){const s=$(id);s.scrollLeft=el.offsetLeft-s.clientWidth/2+el.offsetWidth/2;}}
+function renderNflStrip(){
+  const gs=D.schedule.filter(s=>s[0]===HW);
+  $('nflStrip').innerHTML=gs.map(s=>{const [w,day,a,hm,sc,tm]=s;const cur=(S.off===a&&S.def===hm)||(S.off===hm&&S.def===a);
+    const meta=sc?`Final ${sc[0]}-${sc[1]}`:fmtDay(day,tm).replace(/ ET$/,'').replace(/^(\w+), \w+ \d+ · /,'$1 ');
+    return `<button type="button" class="gchip" data-sdef="${hm}" data-soff="${a}" aria-current="${cur}"><b>${a} @ ${hm}</b><span>${meta}</span></button>`;}).join('');
+  centerStrip('nflStrip');
+}
+function renderNhlStrip(g){
+  const gs=N.games.filter(x=>x.date===g.date).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  $('nhlStrip').innerHTML=gs.map(x=>`<button type="button" class="gchip${x.ice?' gchip-ice':goldGame(x)?' gchip-gold':''}" data-sgame="${x.id}" aria-current="${x.id===g.id}"><b>${x.away} @ ${x.home}</b><span>${gameState(x)}</span></button>`).join('');
+  centerStrip('nhlStrip');
+}
+
 const VIEWS={home:'landView',board:'homeView',bets:'betsView',detail:'detailView',nhl:'nhlBoardView',nhlGame:'nhlGameView'};
 function show(v){
   Object.entries(VIEWS).forEach(([k,id])=>$(id).hidden=k!==v);
@@ -1108,6 +1136,8 @@ function init(){
   $('players').addEventListener('click',e=>{const b=e.target.closest('.plink');if(b) openPlog(b.dataset.pid,b.dataset.pos,b.dataset.role);});
   $('plogClose').onclick=()=>$('plogDlg').close();
   $('plogDlg').addEventListener('click',e=>{if(e.target.id==='plogDlg') $('plogDlg').close();});
+  $('nflStrip').addEventListener('click',e=>{const b=e.target.closest('[data-sdef]');if(b){S.def=b.dataset.sdef;S.off=b.dataset.soff;sync();window.scrollTo(0,0);}});
+  $('nhlStrip').addEventListener('click',e=>{const b=e.target.closest('[data-sgame]');if(b) openNhlGame(b.dataset.sgame);});
   $('nhlDays').addEventListener('click',e=>{const b=e.target.closest('[data-nday]');if(b){NDAY=b.dataset.nday;renderNhlBoard();}});
   const og=e=>{const c=e.target.closest('[data-ngame]');if(c) openNhlGame(c.dataset.ngame);};
   $('nhlGames').addEventListener('click',og);
@@ -1125,6 +1155,7 @@ function init(){
   $('seg').addEventListener('click',e=>{const b=e.target.closest('[data-lg]');if(b){S.lg=b.dataset.lg;renderLeague();}});
 }
 function sync(){
+  if($('nflStrip')) setTimeout(renderNflStrip,0);
   $('defSel').value=S.def;$('offSel').value=S.off;
   const g=nextGame(S.def);
   $('wkNote').textContent=g?`${nick(S.def)} next: Week ${g[0]} ${g[2]===S.def?'at '+NAMES[g[3]]:'vs '+NAMES[g[2]]}`:'';
