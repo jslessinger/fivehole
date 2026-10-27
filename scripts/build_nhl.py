@@ -11,7 +11,7 @@ Sources (all free and public, no key):
 Run from the repository root:
     python scripts/build_nhl.py
 """
-import os, json, time, base64, datetime, unicodedata, urllib.request, urllib.error
+import os, sys, json, time, base64, datetime, unicodedata, urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +24,23 @@ MSF = os.environ.get('MSF_BASE', 'https://api.mysportsfeeds.com/v2.1/pull/nhl')
 MSF_KEY = os.environ.get('MSF_API_KEY', '').strip()
 LAST_N = 7
 WARN = []
+
+
+def _report_crash(exc_type, exc, tb):
+    import traceback
+    msg = ''.join(traceback.format_exception(exc_type, exc, tb))
+    sys.__excepthook__(exc_type, exc, tb)
+    try:
+        old = json.load(open(OUT)) if os.path.exists(OUT) else {}
+        old['buildError'] = msg[-3000:]
+        old['buildErrorAt'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+        with open(OUT, 'w') as f:
+            json.dump(old, f, separators=(',', ':'))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+sys.excepthook = _report_crash
 
 
 def get(url, tries=3, auth=None):
@@ -52,6 +69,11 @@ def txt(v):
 def norm(s):
     s = unicodedata.normalize('NFKD', txt(s)).encode('ascii', 'ignore').decode().lower()
     return ''.join(ch for ch in s if ch.isalnum())
+
+
+def dget(v, k, d=None):
+    """Like v.get(k) but tolerant of v not being a dict."""
+    return v.get(k, d) if isinstance(v, dict) else d
 
 
 def num(v, d=0):
@@ -469,14 +491,18 @@ espn_prob = {}   # (game id, team) -> {'name','status'}
 
 
 def espn_goalie(c):
-    for p in c.get('probables', []) or []:
-        a = p.get('athlete') or {}
-        tag = ' '.join(str(x) for x in (p.get('name'), p.get('displayName'), p.get('abbreviation'),
-                                         (a.get('position') or {}).get('abbreviation'))).lower()
-        if ('goal' in tag or ' g' in f' {tag}') and a.get('displayName'):
-            st = ' '.join(str(x) for x in ((p.get('status') or {}).get('name'), (p.get('status') or {}).get('type'),
-                                            p.get('statusName') or '')).lower()
-            return {'name': a['displayName'], 'status': 'Confirmed' if ('confirm' in st and 'unconfirm' not in st) else 'Expected'}
+    for p in (dget(c, 'probables') or []):
+        if not isinstance(p, dict):
+            continue
+        a = dget(p, 'athlete') or {}
+        pos = dget(a, 'position')
+        pos = dget(pos, 'abbreviation') if isinstance(pos, dict) else pos
+        tag = ' '.join(str(x) for x in (dget(p, 'name'), dget(p, 'displayName'), dget(p, 'abbreviation'), pos)).lower()
+        nm = dget(a, 'displayName') or dget(a, 'fullName')
+        if ('goal' in tag or ' g' in f' {tag}') and nm:
+            stv = dget(p, 'status')
+            st = ' '.join(str(x) for x in ((dget(stv, 'name'), dget(stv, 'type')) if isinstance(stv, dict) else (stv,))).lower()
+            return {'name': nm, 'status': 'Confirmed' if ('confirm' in st and 'unconfirm' not in st) else 'Expected'}
     return None
 
 
@@ -498,24 +524,36 @@ def pregame_window(game):
         return False
     mins = (start - datetime.datetime.now(datetime.timezone.utc)).total_seconds() / 60
     return -15 < mins < 75
+def espn_event(day, ev):
+    comp = (dget(ev, 'competitions') or [{}])[0]
+    side = {}
+    for c in dget(comp, 'competitors') or []:
+        side[dget(c, 'homeAway')] = by_name.get(norm(dget(dget(c, 'team'), 'displayName')))
+    g = next((x for x in games if x['date'] == day and x['home'] == side.get('home') and x['away'] == side.get('away')), None)
+    if not g:
+        return
+    for c in dget(comp, 'competitors') or []:
+        ab_ = side.get(dget(c, 'homeAway'))
+        pg = espn_goalie(c)
+        if ab_ and pg:
+            espn_prob[(g['id'], ab_)] = pg
+    try:
+        od = espn_odds(comp)
+    except Exception as e:  # noqa: BLE001
+        WARN.append(f'ESPN odds skipped for {g["away"]}@{g["home"]}: {e!r}')
+        od = None
+    if od:
+        od['updated'] = ODDS_AT
+        g['odds'] = od
+
+
 for day in sorted({g['date'] for g in games if g.get('date')}):
     sb = get(f"{ESPN_SB}?dates={day.replace('-', '')}") or {}
-    for ev in sb.get('events', []) or []:
-        comp = (ev.get('competitions') or [{}])[0]
-        side = {}
-        for c in comp.get('competitors', []) or []:
-            side[c.get('homeAway')] = by_name.get(norm((c.get('team') or {}).get('displayName')))
-        g = next((x for x in games if x['date'] == day and x['home'] == side.get('home') and x['away'] == side.get('away')), None)
-        if g:
-            for c in comp.get('competitors', []) or []:
-                ab_ = side.get(c.get('homeAway'))
-                pg = espn_goalie(c)
-                if ab_ and pg:
-                    espn_prob[(g['id'], ab_)] = pg
-            od = espn_odds(comp)
-            if od:
-                od['updated'] = ODDS_AT
-                g['odds'] = od
+    for ev in dget(sb, 'events') or []:
+        try:
+            espn_event(day, ev)
+        except Exception as e:  # noqa: BLE001
+            WARN.append(f'ESPN event skipped on {day}: {e!r}')
 
 
 # ------------------------------------------------ manual goalie overrides
@@ -560,10 +598,23 @@ def load_manual():
         manual[(mine[0]['id'], ab)] = {'name': name, 'status': status}
         MANUAL_LINES += 1
 
-load_manual()
+try:
+    load_manual()
+except Exception as e:  # noqa: BLE001
+    WARN.append(f'goalies.txt skipped: {e!r}')
 for g in sorted(games, key=lambda x: (x.get('start') or '', x.get('date') or '')):
     if g['away'] in teams and g['home'] in teams:
-        g['goalies'] = {'away': project(g['away'], g), 'home': project(g['home'], g)}
+        picks = {}
+        for side in ('away', 'home'):
+            try:
+                picks[side] = project(g[side], g)
+            except Exception as e:  # noqa: BLE001
+                WARN.append(f'goalie pick failed for {g[side]} on {g["date"]}: {e!r}')
+                try:
+                    picks[side] = model_pick(g[side], g)
+                except Exception:  # noqa: BLE001
+                    picks[side] = None
+        g['goalies'] = picks
         for side in ('away', 'home'):
             ab_, p_ = g[side], g['goalies'][side]
             if p_ and not any(d == g['date'] for d, _ in HIST[ab_]):
