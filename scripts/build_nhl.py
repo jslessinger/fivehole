@@ -573,6 +573,7 @@ for day in sorted({g['date'] for g in games if g.get('date')}):
 #   PHI Joseph Woll expected             (next PHI game, Expected)
 #   2026-10-28 PHI Dan Vladar confirmed  (a specific date)
 manual = {}    # (game id, team) -> {'name', 'status'}
+ICE = {'id': None}   # the game picked as the ICE game (line: ICE <game id> ...)
 MANUAL_LINES = 0
 
 
@@ -586,6 +587,10 @@ def load_manual():
         if not line:
             continue
         parts = line.split()
+        if parts[0].upper() == 'ICE':
+            if len(parts) > 1 and parts[1].isdigit():
+                ICE['id'] = int(parts[1])
+            continue
         day = None
         if parts and len(parts[0]) == 10 and parts[0][4] == '-':
             day, parts = parts[0], parts[1:]
@@ -631,6 +636,9 @@ for g in sorted(games, key=lambda x: (x.get('start') or '', x.get('date') or '')
             if p_ and not any(d == g['date'] for d, _ in HIST[ab_]):
                 HIST[ab_].append((g['date'], p_.get('id')))
 
+for g in games:
+    if ICE['id'] and g.get('id') == ICE['id']:
+        g['ice'] = True
 data = {
     'asOf': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),
     'season': season, 'teams': teams, 'games': games, 'warnings': WARN[:20], 'msf': MSF_STATUS,
