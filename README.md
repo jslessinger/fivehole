@@ -73,6 +73,44 @@ game lineup (filed about 20-30 minutes before puck drop) or has started the game
 Five Hole makes its own pick from recent starts, back-to-backs and injuries.
 In the evening the NHL update runs every 10 minutes to catch official lineups.
 
+### Entering starting goalies yourself (goalies.txt)
+
+When you see a starter confirmed (on GoaliePost, RotoWire, a team account or a
+beat reporter), add a line to `goalies.txt` in the repository and commit:
+
+    PHI Joseph Woll                   next PHI game, shown as Confirmed
+    CGY Dustin Wolf expected          shown as Expected
+    2026-10-28 PHI Dan Vladar         a specific date
+
+The site updates in a few minutes. Old lines are ignored once the game is played.
+The NHL's official lineup, filed about 20-30 minutes before puck drop, always wins.
+
+### Editing goalies on the site itself
+
+You can set starters right on Five Hole instead of editing `goalies.txt` by hand.
+
+One-time setup on each device you'll edit from:
+
+1. On GitHub, open your profile picture → **Settings** → **Developer settings** →
+   **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Name it `Five Hole editor`, pick an expiration (up to a year), and under
+   **Repository access** choose **Only select repositories** → `fivehole`.
+3. Under **Permissions → Repository permissions**, set **Contents** to
+   **Read and write**. Leave everything else as is.
+4. Click **Generate token** and copy it (it starts with `github_pat_`).
+5. On your site, open **The Crease**, click **Editor sign-in** at the bottom,
+   paste the token, check the repository reads `jslessinger/fivehole`, and click
+   **Sign in**.
+
+From then on, every game page shows **Set starter** under each goalie card: pick the
+goalie and Confirmed or Expected, then **Save** (or **Clear** to go back to the
+site's own pick). It updates `goalies.txt` for you, and the site refreshes for
+everyone in a few minutes. Visitors never see these controls.
+
+The token is stored only in that browser. Use **Sign out on this device** on shared
+computers, and if a token is ever exposed, delete it on GitHub under Fine-grained
+tokens; that instantly disables it.
+
 ### Odds
 
 Each game page shows the current moneyline, puck line and total from ESPN's free

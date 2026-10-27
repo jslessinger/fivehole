@@ -253,6 +253,15 @@ table.odds th,table.odds td{text-align:center}
 table.odds th:first-child,table.odds td:first-child{text-align:left}
 table.odds .og{border-left:1px solid var(--line)}
 table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbody td:nth-child(6),table.odds tbody td:nth-child(8){border-left:1px solid var(--line)}
+
+.editbar{margin-top:26px;text-align:right}
+.linkbtn{border:0;background:none;color:var(--muted);text-decoration:underline;padding:4px 6px;font-size:.85rem}
+.edpanel{margin-top:8px;max-width:520px;margin-left:auto}
+.edpanel input{display:block;width:100%;font:inherit;padding:8px 10px;margin:4px 0 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.edpanel code{font-size:.85em}
+.edrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.edrow select{width:auto;max-width:100%;font:inherit;font-size:.9rem;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.edrow .edmsg{flex-basis:100%}
 </style>
 </head>
 <body>
@@ -374,6 +383,8 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
     <div class="seg" id="nhlDays"></div>
     <p class="goldnote" id="nhlLegend" hidden><span class="goldswatch"></span>Gold border: the home team is rested and the road team is on the second night of a back-to-back. <span class="chip chip-b2b">B2B</span> marks any team that played yesterday.</p>
     <div class="games" id="nhlGames"><p class="note">Loading hockey data…</p></div>
+    <div class="editbar"><button type="button" id="edToggle" class="linkbtn">Editor sign-in</button></div>
+    <div class="gcard edpanel" id="edPanel" hidden></div>
   </section>
 
   <section id="nhlGameView" hidden>
@@ -721,6 +732,7 @@ function renderNhlGame(id){
       ${p?`<div class="starter"><b>${p.name}</b>${chip(p)}</div><p class="hint" style="margin:4px 0 0">${p.why||''}</p>
       <div class="gline"><div><small>GP / GS</small><strong>${st?st.gp+' / '+st.gs:'—'}</strong></div><div><small>Record</small><strong>${st?rec(st):'—'}</strong></div><div><small>GAA</small><strong>${st&&st.gp?f2(st.gaa):'—'}</strong></div><div><small>SV%</small><strong>${st&&st.gp?svp(st.svp):'—'}</strong></div><div><small>SO</small><strong>${st?st.so:'—'}</strong></div></div>`:'<p class="hint">No goalie could be projected.</p>'}
       ${others.length?`<ul class="others">${others.map(o=>{const ij=injG.find(i=>i.name===o.name);return `<li><span>${o.name}${ij?` <span class="st st-${ij.status.toLowerCase().replace(/[^a-z]/g,'')}">${ij.status}</span>`:''}</span><span class="hint">${o.gp?`${rec(o)} · ${f2(o.gaa)} · ${svp(o.svp)}`:'No starts'}</span></li>`}).join('')}</ul>`:''}
+      ${editorControls(g,ab,key)}
     </div>`;};
   // comparison
   const row=(label,a,h,better,key)=>{const av=a.v,hv=h.v;let ca='',ch='';
@@ -767,7 +779,7 @@ function renderNhlGame(id){
   const b2bTxt=[b2bA?`${A.name} played yesterday (back-to-back)`:'',b2bH?`${H.name} played yesterday (back-to-back)`:''].filter(Boolean).join(' · ');
   $('nhlGame').innerHTML=`<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
     <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
-    <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
+    <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN or from reports. Starters reported by teams or reporters can also be entered on Five Hole as Confirmed or Expected. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
     <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
     <h2>Goalie game logs</h2><p class="sub">Each goalie’s last ${GLOG_N} appearances this season. The projected starter is shown first; switch goalies with the buttons.</p>
     <div id="glogs">${glogSection(g)}</div>
@@ -819,6 +831,66 @@ function glogSection(g){
 function openNhlGame(id){ NGID=id; GLSEL={}; show('nhlGame'); }
 let NGID=null;
 
+// ============== on-site goalie editor (saves goalies.txt via GitHub) ==============
+const ED={
+  get token(){try{return localStorage.getItem('fh_token')||'';}catch(e){return '';}},
+  set token(v){try{v?localStorage.setItem('fh_token',v):localStorage.removeItem('fh_token');}catch(e){}},
+  get repo(){let r='';try{r=localStorage.getItem('fh_repo')||'';}catch(e){}
+    if(r) return r; const o=location.hostname.endsWith('.github.io')?location.hostname.split('.')[0]:''; const p=location.pathname.split('/').filter(Boolean)[0]||'';
+    return o&&p?`${o}/${p}`:'';},
+  set repo(v){try{v?localStorage.setItem('fh_repo',v):localStorage.removeItem('fh_repo');}catch(e){}}
+};
+const b64=s=>{const b=new TextEncoder().encode(s);let x='';b.forEach(c=>x+=String.fromCharCode(c));return btoa(x);};
+const unb64=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,'')),c=>c.charCodeAt(0)));
+async function ghFile(){
+  const r=await fetch(`https://api.github.com/repos/${ED.repo}/contents/goalies.txt`,{headers:{Authorization:`Bearer ${ED.token}`,Accept:'application/vnd.github+json'},cache:'no-store'});
+  if(r.status===404) return {text:'',sha:null};
+  if(!r.ok) throw new Error(r.status===401?'The access token was rejected. Sign in again with a valid token.':`GitHub returned an error (${r.status}).`);
+  const j=await r.json(); return {text:unb64(j.content||''),sha:j.sha};
+}
+async function ghSave(text,sha,msg){
+  const r=await fetch(`https://api.github.com/repos/${ED.repo}/contents/goalies.txt`,{method:'PUT',headers:{Authorization:`Bearer ${ED.token}`,Accept:'application/vnd.github+json','Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({message:msg,content:b64(text)},sha?{sha}:{}))});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(r.status===409?'The file changed while saving. Try again.':(j.message||`GitHub returned an error (${r.status}).`));}
+}
+function withoutTeam(text,ab,date){
+  return text.split('\n').filter(l=>{const t=l.split('#')[0].trim().split(/\s+/);if(!t[0]) return true;
+    const dated=/^\d{4}-\d{2}-\d{2}$/.test(t[0]);const team=(dated?t[1]:t[0]||'').toUpperCase();
+    return !(team===ab&&(!dated||t[0]===date));}).join('\n').replace(/\n*$/,'\n');
+}
+function editorControls(g,ab,key){
+  if(!ED.token||g.state==='OFF'||g.state==='FINAL') return '';
+  const t=nT(ab);const p=(g.goalies||{})[key];
+  const opts=(t.goalies||[]).map(x=>`<option value="${x.name}"${p&&p.name===x.name?' selected':''}>${x.name}</option>`).join('');
+  return `<div class="edrow" data-ed="${g.id}:${ab}:${key}"><span class="hint">Set starter</span>
+    <select class="edg">${opts}</select><select class="eds"><option value="confirmed">Confirmed</option><option value="expected"${p&&p.status==='Expected'?' selected':''}>Expected</option></select>
+    <button type="button" data-edact="save">Save</button><button type="button" data-edact="clear" class="linkbtn">Clear</button><span class="edmsg hint"></span></div>`;
+}
+async function editorAction(btn){
+  const row=btn.closest('[data-ed]');const [gid,ab,key]=row.dataset.ed.split(':');const msg=row.querySelector('.edmsg');
+  const g=N.games.find(x=>String(x.id)===gid);const name=row.querySelector('.edg').value;const status=row.querySelector('.eds').value;
+  row.querySelectorAll('button,select').forEach(x=>x.disabled=true);msg.textContent='Saving…';
+  try{
+    const f=await ghFile();let text=withoutTeam(f.text,ab,g.date);
+    if(btn.dataset.edact==='save') text+=`${g.date} ${ab} ${name} ${status}\n`;
+    await ghSave(text,f.sha,btn.dataset.edact==='save'?`Goalie: ${ab} ${name} (${status}) for ${g.date}`:`Goalie: clear ${ab} for ${g.date}`);
+    if(btn.dataset.edact==='save'){const gl=(nT(ab).goalies||[]).find(x=>x.name===name);
+      g.goalies=g.goalies||{};g.goalies[key]={id:gl?gl.id:null,name,status:status==='confirmed'?'Confirmed':'Expected',why:'Saved just now. The site refreshes in a few minutes.'};}
+    renderNhlGame(gid);
+    const m=document.querySelector(`[data-ed="${gid}:${ab}:${key}"] .edmsg`);if(m) m.textContent=btn.dataset.edact==='save'?'Saved. Live for everyone in a few minutes.':'Cleared. The site’s own pick returns in a few minutes.';
+  }catch(err){msg.textContent=err.message;row.querySelectorAll('button,select').forEach(x=>x.disabled=false);}
+}
+function renderEdPanel(){
+  const p=$('edPanel');
+  p.innerHTML=ED.token?`<h3>Goalie editor <span>Signed in on this device</span></h3><p class="hint" style="margin:0 0 10px">Open any game and use “Set starter” under each goalie card. Saving updates <code>goalies.txt</code> in <b>${ED.repo||'your repository'}</b>; the site refreshes for everyone in a few minutes.</p>
+      <button type="button" id="edOut">Sign out on this device</button>`
+    :`<h3>Goalie editor <span>For the site owner</span></h3>
+      <p class="hint" style="margin:0 0 10px">Paste a GitHub fine-grained access token with <b>Contents: Read and write</b> access to this site’s repository only. It’s stored in this browser, never on the site.</p>
+      <label class="hint" for="edTok">Access token</label><input id="edTok" type="password" autocomplete="off" placeholder="github_pat_…">
+      <label class="hint" for="edRepo">Repository</label><input id="edRepo" type="text" value="${ED.repo}" placeholder="username/fivehole">
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button type="button" id="edIn">Sign in</button><span class="hint" id="edInMsg"></span></div>`;
+}
+
 const VIEWS={home:'landView',board:'homeView',bets:'betsView',detail:'detailView',nhl:'nhlBoardView',nhlGame:'nhlGameView'};
 function show(v){
   Object.entries(VIEWS).forEach(([k,id])=>$(id).hidden=k!==v);
@@ -849,6 +921,17 @@ function init(){
   document.querySelectorAll('.menu .ddb').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const m_=b.nextElementSibling;const open=m_.hidden;document.querySelectorAll('.menu .ddm').forEach(x=>{x.hidden=true;x.previousElementSibling.setAttribute('aria-expanded','false');});m_.hidden=!open;b.setAttribute('aria-expanded',String(open));}));
   document.addEventListener('click',e=>{if(!e.target.closest('.dd')) document.querySelectorAll('.menu .ddm').forEach(x=>{x.hidden=true;x.previousElementSibling.setAttribute('aria-expanded','false');});});
   document.addEventListener('keydown',e=>{if(e.key==='Escape') document.querySelectorAll('.menu .ddm').forEach(x=>x.hidden=true);});
+  $('edToggle').onclick=()=>{const p=$('edPanel');p.hidden=!p.hidden;if(!p.hidden) renderEdPanel();};
+  $('edPanel').addEventListener('click',async e=>{
+    if(e.target.id==='edOut'){ED.token='';renderEdPanel();renderNhlBoard();return;}
+    if(e.target.id==='edIn'){const tok=$('edTok').value.trim(),repo=$('edRepo').value.trim();const m=$('edInMsg');
+      if(!tok||!/^[\w.-]+\/[\w.-]+$/.test(repo)){m.textContent='Enter a token and a repository like username/fivehole.';return;}
+      m.textContent='Checking…';ED.token=tok;ED.repo=repo;
+      try{const r=await fetch(`https://api.github.com/repos/${repo}`,{headers:{Authorization:`Bearer ${tok}`,Accept:'application/vnd.github+json'}});
+        const j=await r.json();if(!r.ok||!(j.permissions&&j.permissions.push)) throw new Error();renderEdPanel();}
+      catch(err){ED.token='';m.textContent='That token can’t write to this repository. Check its access and permissions.';}}
+  });
+  $('nhlGame').addEventListener('click',e=>{const a=e.target.closest('[data-edact]');if(a){editorAction(a);return;}});
   $('nhlGame').addEventListener('click',e=>{const b=e.target.closest('[data-glt]');if(!b) return;const [k,id]=b.dataset.glt.split(':');GLSEL[k]=Number(id);const g=N.games.find(x=>String(x.id)===String(NGID));$('glogs').innerHTML=glogSection(g);});
   $('nhlDays').addEventListener('click',e=>{const b=e.target.closest('[data-nday]');if(b){NDAY=b.dataset.nday;renderNhlBoard();}});
   const og=e=>{const c=e.target.closest('[data-ngame]');if(c) openNhlGame(c.dataset.ngame);};
