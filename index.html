@@ -299,6 +299,8 @@ li.outp .plink{text-decoration:line-through}
 .players{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:900px){.players{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.players{grid-template-columns:1fr}}
+table.h2h{min-width:560px}
+table.h2h td,table.h2h th{text-align:left}
 </style>
 </head>
 <body>
@@ -866,10 +868,26 @@ function renderNhlGame(id){
     <h2>Goalie game logs</h2><p class="sub">Each goalie’s last ${GLOG_N} appearances this season. The projected starter is shown first; switch goalies with the buttons.</p>
     <div id="glogs">${glogSection(g)}</div>
     <h2>Team comparison</h2><p class="sub">Season numbers. The better side of each comparable stat is highlighted; shaded rows are the splits that apply tonight.</p>${cmp}
+    <h2>Head-to-head</h2>${h2hSection(g)}
     <h2>Last 7 games</h2><div><h3 class="logh">${A.name}</h3>${l7(A)}</div><div><h3 class="logh">${H.name}</h3>${l7(H)}</div>
     <h2>Injuries</h2><div class="cols"><div class="gcard"><h3>${A.name}</h3>${injList(A)}</div><div class="gcard"><h3>${H.name}</h3>${injList(H)}</div></div>`;
 }
 const f1=v=>v==null?'—':Number(v).toFixed(1);
+function h2hSection(g){
+  const M=g.h2h||[];
+  if(!M.length) return '<p class="hint">These teams haven’t met yet this season.</p>';
+  const T={};[g.away,g.home].forEach(t=>T[t]=[0,0,0]);
+  M.forEach(m=>{const aw=m.as>m.hs, win=aw?m.away:m.home, los=aw?m.home:m.away; T[win][0]++; T[los][m.ot?2:1]++;});
+  const rec=t=>`${T[t][0]}-${T[t][1]}-${T[t][2]}`;
+  const sum=`<p class="sub">Season series: <b>${g.away} ${rec(g.away)}</b>, <b>${g.home} ${rec(g.home)}</b> <span class="hint">(W-L-OTL)</span></p>`;
+  const gl=x=>x?`${x.name} <span class="hint">${x.sv}/${x.sa}${x.sa?' · '+svp(x.sv/x.sa):''}</span>`:'—';
+  const rows=M.map(m=>{const aw=m.as>m.hs;
+    return `<tr><td>${dLabel(m.date)}</td>
+      <td><span class="${aw?'res-W':''}">${m.away} ${m.as}</span> @ <span class="${aw?'':'res-W'}">${m.home} ${m.hs}</span>${m.ot?' <span class="hint">'+m.ot+'</span>':''}</td>
+      <td>${gl((m.goalies||{}).away)}</td><td>${gl((m.goalies||{}).home)}</td></tr>`;}).join('');
+  return sum+`<div class="tablewrap"><table class="h2h"><thead><tr><th>Date</th><th>Result</th><th>Road goalie</th><th>Home goalie</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 const nrm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const am=v=>v==null?'—':(v>0?'+':'')+v;
 const ln=v=>v==null?'':(v>0?'+':'')+v;
