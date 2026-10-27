@@ -105,6 +105,18 @@ for t in sorted(d.team.unique()):
         # [name, games, rushYds, recYds, carries, rec, targets, id, depth, passYds, att, cmp, passTD, int]
         players.setdefault(t,{})[po]=[[n,int(g),int(ry),int(cy),int(c),int(rec),int(tg),pid,int(dr),int(py),int(pa),int(pc),int(ptd),int(pint)]
             for pid,n,g,ry,cy,c,rec,tg,dr,py,pa,pc,ptd,pint in x[['player_id','player_display_name','g','ry','cy','c','rec','tg','dr','py','pa','pc','ptd','pint']].values]
+# per-player game logs for everyone listed in the player cards
+# row: [week, opp, home(1/0), car, rushYds, rushTD, rushLong, tgt, rec, recYds, recTD, recLong, cmp, att, passYds, passTD, int]
+_home={}
+for r in _gs.itertuples(): _home[(r.week,r.home_team)]=1; _home[(r.week,r.away_team)]=0
+_want={p[7] for P in players.values() for lst in P.values() for p in lst}
+plog={}
+for r in d[d.player_id.isin(_want)].sort_values('week').itertuples():
+    wk=int(r.week); lv=lambda tbl: (lambda v: None if v is None or pd.isna(v) else int(v))(tbl.get((r.player_id,wk)))
+    plog.setdefault(r.player_id,[]).append([wk,r.opponent_team,_home.get((wk,r.team),0),int(r.carries),int(round(r.rushing_yards)),int(r.rushing_tds),
+        lv(LONG_RU) if r.carries>0 else None,int(r.targets),int(r.receptions),int(r.receiving_yards),int(r.receiving_tds),lv(LONG_RE) if r.receptions>0 else None,
+        int(r.completions),int(r.attempts),int(r.passing_yards),int(r.passing_tds),int(r.passing_interceptions)])
+
 # availability for current week
 gs=pd.read_csv('games.csv');gs=gs[(gs.season==SEASON)&(gs.game_type=='REG')]
 _left=gs[gs.home_score.isna()]
@@ -134,7 +146,7 @@ for r in inj.itertuples():
     if r.position in dpos:
         dinj.setdefault(r.team,[]).append([r.full_name,r.position,dpos[r.position],r.report_status,'' if pd.isna(r.report_primary_injury) else r.report_primary_injury])
 g=pd.read_csv('games.csv');g=g[(g.season==SEASON)&(g.game_type=='REG')]
-data={'asOf':AS_OF,'season':SEASON,'throughWeek':int(d.week.max()),'def':de,'off':of,'players':players,'status':status,'dinj':dinj,'injWeek':CUR,
+data={'asOf':AS_OF,'season':SEASON,'throughWeek':int(d.week.max()),'def':de,'off':of,'players':players,'status':status,'dinj':dinj,'plog':plog,'injWeek':CUR,
  'schedule':[[int(r.week),r.gameday,r.away_team,r.home_team,None if pd.isna(r.home_score) else [int(r.away_score),int(r.home_score)],r.gametime] for r in g.itertuples()]}
 json.dump(data,open('data.json','w'),separators=(',',':'))
 
