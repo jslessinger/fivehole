@@ -636,6 +636,51 @@ for g in sorted(games, key=lambda x: (x.get('start') or '', x.get('date') or '')
             if p_ and not any(d == g['date'] for d, _ in HIST[ab_]):
                 HIST[ab_].append((g['date'], p_.get('id')))
 
+
+# ------------------------------------- head-to-head (this season's meetings)
+def _compact(g):
+    lpt = ((g.get('gameOutcome') or {}).get('lastPeriodType') or 'REG').upper()
+    return [g['id'], g.get('gameDate') or (g.get('startTimeUTC') or '')[:10], txt(g['awayTeam'].get('abbrev')),
+            txt(g['homeTeam'].get('abbrev')), int(num(g['awayTeam'].get('score'))), int(num(g['homeTeam'].get('score'))),
+            lpt if lpt in ('OT', 'SO') else '']
+
+
+def build_h2h():
+    """Attach every completed meeting between the two teams this season."""
+    try:
+        old = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    except Exception:  # noqa: BLE001
+        old = {}
+    cur = [_compact(g) for g in finals.values()]
+    gcache = {}   # goalies in past meetings never change: reuse the last run's lookups
+    for og in old.get('games', []) or []:
+        for m in og.get('h2h', []) or []:
+            if m.get('goalies'):
+                gcache[m['id']] = m['goalies']
+    picks, want = {}, set()
+    for g in games:
+        pair = {g['away'], g['home']}
+        ms = sorted([m for m in cur if {m[2], m[3]} == pair and m[0] != g['id']], key=lambda m: m[1], reverse=True)
+        picks[g['id']] = ms
+        want.update(m[0] for m in ms if m[0] not in gcache)
+    if want:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            got = dict(zip(list(want), ex.map(lambda gid: get(f'{WEB}/gamecenter/{gid}/boxscore'), list(want))))
+        for gid, box in got.items():
+            st = starters(box) if box else {}
+            gl = {k: {'name': v['name'], 'sv': v['sv'], 'sa': v['sa']} for k, v in (('away', st.get('awayTeam')), ('home', st.get('homeTeam'))) if v}
+            if gl:
+                gcache[gid] = gl
+    for g in games:
+        g['h2h'] = [{'id': m[0], 'date': m[1], 'away': m[2], 'home': m[3], 'as': m[4], 'hs': m[5], 'ot': m[6],
+                     'goalies': gcache.get(m[0])} for m in picks[g['id']]]
+
+
+try:
+    build_h2h()
+except Exception as e:  # noqa: BLE001
+    WARN.append(f'head-to-head skipped: {e!r}')
+
 for g in games:
     if ICE['id'] and g.get('id') == ICE['id']:
         g['ice'] = True
