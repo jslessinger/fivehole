@@ -171,6 +171,17 @@ with ThreadPoolExecutor(max_workers=6) as ex:
     boxes = dict(zip(need, ex.map(lambda gid: get(f'{WEB}/gamecenter/{gid}/boxscore'), list(need))))
 
 
+def played(gl_):
+    """True if this goalie actually saw ice time (not just dressed as the backup)."""
+    try:
+        m, sec = str(gl_.get('toi') or '0:00').split(':')
+        if int(m) * 60 + int(sec) > 0:
+            return True
+    except ValueError:
+        pass
+    return num(gl_.get('shotsAgainst')) > 0
+
+
 def starters(box, require_flag=False):
     out = {}
     pbs = (box or {}).get('playerByGameStats') or {}
@@ -183,7 +194,7 @@ def starters(box, require_flag=False):
             g = st_[0]
             out[side] = {'id': g.get('playerId'), 'name': txt(g.get('name')), 'sv': int(num(g.get('saves'))),
                          'sa': int(num(g.get('shotsAgainst'))), 'ga': int(num(g.get('goalsAgainst'))),
-                         'dec': g.get('decision') or '', 'pulled': len(gl) > 1}
+                         'dec': g.get('decision') or '', 'pulled': len([x for x in gl if played(x)]) > 1}
     return out
 
 
