@@ -34,7 +34,13 @@ for name,url in FILES.items():
 
 d=pd.read_csv('w.csv',low_memory=False).copy()
 # remove kneel-downs
-p=pd.read_csv('pbp.csv.gz',usecols=['week','qb_kneel','rusher_player_id','rushing_yards'],low_memory=False)
+p=pd.read_csv('pbp.csv.gz',usecols=['week','qb_kneel','rusher_player_id','rushing_yards','receiver_player_id','receiving_yards'],low_memory=False)
+# longest rush / reception per player per week (kneel-downs excluded)
+LONG_RU=p[(p.qb_kneel!=1)&p.rusher_player_id.notna()].groupby(['rusher_player_id','week']).rushing_yards.max().to_dict()
+LONG_RE=p[p.receiver_player_id.notna()&p.receiving_yards.notna()].groupby(['receiver_player_id','week']).receiving_yards.max().to_dict()
+def lng(tbl,pid,wk):
+    v=tbl.get((pid,wk))
+    return None if v is None or pd.isna(v) else int(v)
 k=p[p.qb_kneel==1].groupby(['rusher_player_id','week']).agg(kc=('qb_kneel','size'),ky=('rushing_yards','sum')).reset_index()
 d=d.merge(k,how='left',left_on=['player_id','week'],right_on=['rusher_player_id','week'])
 d['kc']=d.kc.fillna(0); d['ky']=d.ky.fillna(0)
@@ -134,24 +140,28 @@ json.dump(data,open('data.json','w'),separators=(',',':'))
 
 logr={}
 def nm(n): return n.replace('.', '. ',1) if '. ' not in n else n
+def iv(v): return None if v is None or pd.isna(v) else int(v)
 for (t,w),x in d.groupby(['opponent_team','week']):
     ru=x[(x.pos.isin(['RB','QB']))&(x.carries>0)].copy()
     ru['o']=ru.pos.map({'RB':0,'QB':1})
     ru=ru.sort_values(['o','rushing_yards'],ascending=[True,False])
-    ww=wr[(wr.opponent_team==t)&(wr.week==w)&(wr.targets>0)][['player_name','role','targets','receptions','receiving_yards','receiving_tds']].copy()
+    ru['lg']=[lng(LONG_RU,pid,int(w)) for pid in ru.player_id]
+    ww=wr[(wr.opponent_team==t)&(wr.week==w)&(wr.targets>0)][['player_id','player_name','role','targets','receptions','receiving_yards','receiving_tds']].copy()
     ww['lab']=ww.role.map({1:'WR1',2:'WR2',3:'WR3+'})
-    ot=x[(x.pos.isin(['RB','TE']))&(x.targets>0)][['player_name','pos','targets','receptions','receiving_yards','receiving_tds']].copy().rename(columns={'pos':'lab'})
+    ot=x[(x.pos.isin(['RB','TE']))&(x.targets>0)][['player_id','player_name','pos','targets','receptions','receiving_yards','receiving_tds']].copy().rename(columns={'pos':'lab'})
     re=pd.concat([ot,ww.drop(columns='role')])
     re['o']=re.lab.map({'RB':0,'WR1':1,'WR2':2,'WR3+':3,'TE':4})
     re=re.sort_values(['o','receiving_yards'],ascending=[True,False])
+    re['lg']=[lng(LONG_RE,pid,int(w)) if rc>0 else None for pid,rc in zip(re.player_id,re.receptions)]
     pa=x[(x.pos=='QB')&(x.attempts>0)].sort_values('attempts',ascending=False)
     logr.setdefault(t,{})[int(w)]={
       'pa':[[nm(r.player_name),int(r.attempts),int(r.completions),int(round(r.passing_yards)),int(r.passing_tds),int(r.passing_interceptions)] for r in pa.itertuples()],
-      'ru':[[nm(r.player_name),r.pos,int(r.carries),int(round(r.rushing_yards)),int(r.rushing_tds)] for r in ru.itertuples()],
-      're':[[nm(r.player_name),r.lab,int(r.targets),int(r.receptions),int(r.receiving_yards),int(r.receiving_tds)] for r in re.itertuples()]}
+      # ru: [name, pos, att, yds, td, long]   re: [name, role, tgt, rec, yds, td, long]
+      'ru':[[nm(r.player_name),r.pos,int(r.carries),int(round(r.rushing_yards)),int(r.rushing_tds),iv(r.lg)] for r in ru.itertuples()],
+      're':[[nm(r.player_name),r.lab,int(r.targets),int(r.receptions),int(r.receiving_yards),int(r.receiving_tds),iv(r.lg)] for r in re.itertuples()]}
 data['logr']=logr
 
 
 with open(OUT,'w') as f:
-    json.dump(data,f,separators=(',',':'))
+    json.dump(data,f,separators=(',',':'),allow_nan=False)
 print(f'wrote {OUT}: season {SEASON}, through week {data["throughWeek"]}, injury week {CUR}, as of {AS_OF}')
