@@ -39,7 +39,7 @@ jobs:
         run: pip install "pandas>=2.2,<3"
 
       - name: Build NFL data (data.json)
-        if: github.event.schedule != '15 * * * *' && !contains(github.event.schedule, '*/10')
+        if: github.event.schedule != '15 * * * *' && !contains(github.event.schedule, '*/10') && !startsWith(github.event.head_commit.message, 'Goalie:')
         continue-on-error: true
         run: python scripts/build_data.py
 
@@ -60,6 +60,7 @@ jobs:
             git add data.json
             [ -f nhl.json ] && git add nhl.json
             git commit -m "Update stats $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git pull --rebase --autostash || true
             git push
           fi
 
