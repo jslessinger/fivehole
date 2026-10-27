@@ -262,6 +262,26 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
 .edrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
 .edrow select{width:auto;max-width:100%;font:inherit;font-size:.9rem;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 .edrow .edmsg{flex-basis:100%}
+
+.nhl-game.ice,.icebanner{position:relative;overflow:visible;border:3px solid #7CC6EE;box-shadow:0 0 0 2px rgba(255,255,255,.7) inset,0 0 0 5px rgba(124,198,238,.28),0 0 26px rgba(102,184,240,.55)}
+.nhl-game.ice{margin:22px 0 44px}
+.nhl-game.ice .gh{padding-top:20px;border-radius:11px 11px 0 0;background:linear-gradient(180deg,#EAF7FE,var(--turf-soft))}
+.icicles{position:absolute;left:4px;top:100%;width:calc(100% - 8px);height:40px;margin-top:-1px;pointer-events:none;z-index:3}
+.icecloud{position:absolute;left:-8px;top:-25px;width:calc(100% + 16px);height:38px;pointer-events:none;z-index:2;filter:drop-shadow(0 2px 3px rgba(124,198,238,.55))}
+.icespark{position:absolute;width:10px;height:10px;pointer-events:none;z-index:4}
+.icechip{display:inline-block;font:800 .62rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.08em;padding:3px 7px;border-radius:5px;margin-left:8px;vertical-align:.25em;color:#06324F;background:linear-gradient(180deg,#FFFFFF,#BFE6FB);border:1px solid #7CC6EE;box-shadow:0 0 8px rgba(124,198,238,.7)}
+.icebanner{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:32px 0 50px;padding:20px 18px 14px;border-radius:14px;background:linear-gradient(180deg,#EAF7FE,var(--panel))}
+.icebanner b{font:400 1.4rem "Graduate","Rockwell",serif;color:#0B4F7A}
+.icebanner span{color:var(--muted)}
+.iceedit{display:inline-flex;align-items:center;gap:8px;margin:14px 0 0;font-size:.92rem;padding:6px 10px;border:1px dashed var(--line);border-radius:8px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nhl-game.ice,:root:not([data-theme="light"]) .icebanner{box-shadow:0 0 0 2px rgba(255,255,255,.15) inset,0 0 0 5px rgba(124,198,238,.25),0 0 30px rgba(102,184,240,.75)}
+ :root:not([data-theme="light"]) .nhl-game.ice .gh{background:linear-gradient(180deg,#1E3448,var(--turf-soft))}
+ :root:not([data-theme="light"]) .icebanner{background:linear-gradient(180deg,#1E3448,var(--panel))}
+ :root:not([data-theme="light"]) .icebanner b{color:#BFE6FB}}
+.nhl-game.ice .gh{align-items:center}
+.nhl-game.ice .gh b{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.nhl-game.ice .gh b .icechip{margin-left:0;vertical-align:0}
+.nhl-game.ice .gh>span{text-align:right}
 </style>
 </head>
 <body>
@@ -395,6 +415,7 @@ table.odds tbody td:nth-child(2),table.odds tbody td:nth-child(4),table.odds tbo
   <footer id="foot"></footer>
 </div>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="fhIce" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#CBEBFC"/><stop offset="1" stop-color="#6FBCEB" stop-opacity=".35"/></linearGradient><linearGradient id="fhSnow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#F1FAFF"/><stop offset="1" stop-color="#C6E8FB"/></linearGradient><linearGradient id="fhGlass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".0"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#9FD6F5" stop-opacity=".25"/></linearGradient><linearGradient id="fhIceS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs></svg>
 <script>
 (async()=>{
 let D;
@@ -716,7 +737,7 @@ function renderNhlBoard(){
       const score=g[key+'Score']!=null&&g.state!=='FUT'&&g.state!=='PRE'?`<b style="font:400 1.3rem 'Graduate',serif">${g[key+'Score']}</b>`:'';
       return `<div class="tm"><span class="tn">${t.name}${isB2B(ab,g.date)?' <span class="chip chip-b2b">B2B</span>':''}</span><span class="tr">${score||rec(t)+' · '+(t.pts??'')+' pts'}</span>
         <span class="gl">${chip(p)} ${p?`<b>${p.name}</b> <span class="hint">${st&&st.gp?`${svp(st.svp)} · ${f2(st.gaa)} GAA`:'no NHL starts yet'}</span>`:''}</span></div>`;};
-    return `<article class="game nhl-game${goldGame(g)?' gold':''}" data-ngame="${g.id}" tabindex="0" role="button"><div class="gh"><b>${g.away} @ ${g.home}</b><span>${gameState(g)}</span></div>${side(g.away,'away')}${side(g.home,'home')}</article>`;
+    return `<article class="game nhl-game${g.ice?' ice':goldGame(g)?' gold':''}" data-ngame="${g.id}" tabindex="0" role="button">${g.ice?iceDeco(g.id):''}<div class="gh"><b>${g.away} @ ${g.home}${g.ice?'<span class="icechip">❄ ICE GAME</span>':''}</b><span>${gameState(g)}</span></div>${side(g.away,'away')}${side(g.home,'home')}</article>`;
   }).join(''):'<p class="note">No games this day.</p>';
 }
 function renderNhlGame(id){
@@ -776,8 +797,10 @@ function renderNhlGame(id){
       <tfoot><tr><td colspan="2">Last ${L.length}</td><td>${w}-${l}-${o}</td><td colspan="2">${f2(gf)} GF · ${f2(ga)} GA per game</td></tr></tfoot></table></div>`;};
   const injList=t=>{const I=t.injuries||[];return I.length?`<ul class="injl">${I.map(i=>`<li><span><b>${i.name}</b> <span class="hint">${i.pos}${i.detail?' · '+i.detail:''}${i.ret?' · est. return '+dLabel(i.ret):''}</span></span><span class="st st-${(i.status||'').toLowerCase().replace(/[^a-z]/g,'')}">${i.status||'—'}</span></li>`).join('')}</ul>`:'<p class="hint" style="margin:0">No injuries listed.</p>';};
   const b2bA=isB2B(g.away,g.date), b2bH=isB2B(g.home,g.date);
+  const iceBanner=g.ice?`<div class="icebanner">${iceDeco(g.id+7,44)}<b>❄ ICE GAME</b><span>Five Hole’s pick of the night.</span></div>`:'';
+  const iceEdit=ED.token&&g.state!=='OFF'&&g.state!=='FINAL'?`<label class="iceedit"><input type="checkbox" id="iceToggle" ${g.ice?'checked':''}> Make this the ICE game <span class="hint" id="iceMsg"></span></label>`:'';
   const b2bTxt=[b2bA?`${A.name} played yesterday (back-to-back)`:'',b2bH?`${H.name} played yesterday (back-to-back)`:''].filter(Boolean).join(' · ');
-  $('nhlGame').innerHTML=`<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
+  $('nhlGame').innerHTML=`${iceBanner}${iceEdit}<h1 class="ngh">${A.name} at ${H.name}</h1><p class="sub">${when}${b2bTxt?' · <b>'+b2bTxt+'</b>':''}</p>${goldGame(g)?'<p class="goldnote">Rest edge: the home team is rested and the road team is on the second night of a back-to-back.</p>':''}
     <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
     <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN or from reports. Starters reported by teams or reporters can also be entered on Five Hole as Confirmed or Expected. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
     <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
@@ -891,6 +914,51 @@ function renderEdPanel(){
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button type="button" id="edIn">Sign in</button><span class="hint" id="edInMsg"></span></div>`;
 }
 
+// ============== ICE game (Glacier icicles) ==============
+function iceDeco(seed,cnt){
+  let s=(Number(seed)||7)%233280;const r=()=>{s=(s*9301+49297)%233280;return s/233280;};
+  const n=cnt||16,w=100/n;
+  // icicles hanging under the bottom edge: narrow tapering spikes of mixed lengths on a frozen rim
+  let ic='';const M=40;
+  const spikes=Math.round(n*1.6),sw=100/spikes;
+  const order=[...Array(spikes).keys()].sort(()=>r()-.5);
+  order.forEach(i=>{
+    const cx=i*sw+sw/2+(r()-.5)*sw*.5, long=r()>.55, len=long?M*(.6+r()*.4):M*(.18+r()*.32);
+    const half=sw*(long?.32+r()*.18:.22+r()*.16), x0=cx-half, x1=cx+half, tipx=cx+(r()-.5)*half*.4;
+    ic+=`<path d="M${x0} 0 C${x0+half*.15} ${len*.3} ${tipx-half*.18} ${len*.72} ${tipx} ${len} C${tipx+half*.18} ${len*.72} ${x1-half*.15} ${len*.3} ${x1} 0Z" fill="url(#fhIce)" stroke="#86CDF3" stroke-width=".3"/>`;
+    ic+=`<path d="M${cx-half*.35} 1.5 C${cx-half*.3} ${len*.35} ${tipx-half*.12} ${len*.6} ${tipx-half*.05} ${len*.82}" fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".9"/>`;
+    if(long&&r()>.45) ic+=`<ellipse cx="${tipx}" cy="${len+2.2}" rx=".55" ry=".9" fill="#BFE6FB" stroke="#86CDF3" stroke-width=".2"/>`;
+  });
+  ic+=`<path d="M0 0 H100 V2.6 Q75 4.2 50 2.9 Q25 4.4 0 2.8Z" fill="url(#fhSnow)" stroke="#9FD6F5" stroke-width=".3"/>`;
+  // snow cloud along the top edge: two layers of puffy lobes, glassy highlights, snow speckles
+  const lobes=(cnt,base,hmin,hmax,off)=>{const bw=100/cnt;let d=`M-2 26 L-2 ${base}`,hl='';
+    for(let i=0;i<cnt;i++){const x=i*bw+off*bw-2,hb=hmin+r()*(hmax-hmin);
+      d+=` C${x} ${base-hb*1.35} ${x+bw} ${base-hb*1.35} ${x+bw} ${base}`;
+      hl+=`<path d="M${x+bw*.25} ${base-hb*.62} Q${x+bw*.5} ${base-hb*1.08} ${x+bw*.75} ${base-hb*.62}" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".9"/>`;}
+    return {d:d+` L102 ${base} L102 26 Z`,hl};};
+  const b1=Math.max(4,Math.round(n*.55)),b2=Math.max(5,Math.round(n*.8));
+  const back=lobes(b1,16,6,10,0),front=lobes(b2,18,4,8,.5);
+  let sp='';for(let i=0;i<b2*3;i++) sp+=`<circle cx="${(r()*100).toFixed(1)}" cy="${(13+r()*10).toFixed(1)}" r="${(.3+r()*.45).toFixed(2)}" fill="${r()>.45?'#A9DCF7':'#FFFFFF'}"/>`;
+  const top=back.d, hi=back.hl;
+  const glass=`<rect x="0" y="19.5" width="100" height="4" fill="url(#fhGlass)" opacity=".9"/>`;
+  const star=(st)=>`<svg class="icespark" style="${st}" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0 L6 4 L10 5 L6 6 L5 10 L4 6 L0 5 L4 4Z" fill="#fff"/></svg>`;
+  return `<svg class="icecloud" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path d="${top}" fill="#DCF0FC" stroke="#9FD6F5" stroke-width=".4"/>${hi}<path d="${front.d}" fill="url(#fhSnow)" stroke="#9FD6F5" stroke-width=".4"/>${front.hl}${glass}${sp}</svg>`+
+    `<svg class="icicles" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true">${ic}</svg>`+
+    `${star('left:10%;top:-22px')}${star('right:16%;top:-24px;width:8px;height:8px')}${star('left:48%;top:-26px;width:6px;height:6px')}${star('right:-6px;top:40%')}`;
+}
+async function setIce(g,on){
+  const m=$('iceMsg');m.textContent='Saving…';$('iceToggle').disabled=true;
+  try{
+    const f=await ghFile();
+    let text=f.text.split('\n').filter(l=>l.trim().split(/\s+/)[0].toUpperCase()!=='ICE').join('\n').replace(/\n*$/,'\n');
+    if(on) text+=`ICE ${g.id} ${g.away}@${g.home} ${g.date}\n`;
+    await ghSave(text,f.sha,on?`Goalie: ICE game ${g.away}@${g.home} ${g.date}`:'Goalie: clear ICE game');
+    N.games.forEach(x=>x.ice=on&&x.id===g.id);
+    renderNhlGame(g.id);
+    const m2=$('iceMsg');if(m2) m2.textContent=on?'Saved. Live for everyone in a few minutes.':'Cleared. Live in a few minutes.';
+  }catch(err){m.textContent=err.message;$('iceToggle').disabled=false;}
+}
+
 const VIEWS={home:'landView',board:'homeView',bets:'betsView',detail:'detailView',nhl:'nhlBoardView',nhlGame:'nhlGameView'};
 function show(v){
   Object.entries(VIEWS).forEach(([k,id])=>$(id).hidden=k!==v);
@@ -932,6 +1000,7 @@ function init(){
       catch(err){ED.token='';m.textContent='That token can’t write to this repository. Check its access and permissions.';}}
   });
   $('nhlGame').addEventListener('click',e=>{const a=e.target.closest('[data-edact]');if(a){editorAction(a);return;}});
+  $('nhlGame').addEventListener('change',e=>{if(e.target.id==='iceToggle'){const g=N.games.find(x=>String(x.id)===String(NGID));if(g) setIce(g,e.target.checked);}});
   $('nhlGame').addEventListener('click',e=>{const b=e.target.closest('[data-glt]');if(!b) return;const [k,id]=b.dataset.glt.split(':');GLSEL[k]=Number(id);const g=N.games.find(x=>String(x.id)===String(NGID));$('glogs').innerHTML=glogSection(g);});
   $('nhlDays').addEventListener('click',e=>{const b=e.target.closest('[data-nday]');if(b){NDAY=b.dataset.nday;renderNhlBoard();}});
   const og=e=>{const c=e.target.closest('[data-ngame]');if(c) openNhlGame(c.dataset.ngame);};

@@ -111,6 +111,13 @@ The token is stored only in that browser. Use **Sign out on this device** on sha
 computers, and if a token is ever exposed, delete it on GitHub under Fine-grained
 tokens; that instantly disables it.
 
+### The ICE game
+
+Signed in to the editor, open any upcoming game and tick **Make this the ICE game**.
+That game gets the icicle border and a ❄ ICE GAME tag on The Crease for everyone.
+Only one game is the ICE game at a time; ticking another moves it, and unticking
+clears it. (It's stored as an `ICE` line in `goalies.txt`.)
+
 ### Odds
 
 Each game page shows the current moneyline, puck line and total from ESPN's free
