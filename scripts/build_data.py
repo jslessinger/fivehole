@@ -74,14 +74,17 @@ def agg(key):
         for ro in (1,2,3):
             y=ww[ww.role==ro]; v+=[y.receiving_yards.sum(),y.receptions.sum(),y.targets.sum(),y.receiving_tds.sum()]
         v.append(qb.carries.sum())
+        # QB passing (indexes 28-32): yards, attempts, completions, TDs, interceptions
+        v+=[qb.passing_yards.sum(),qb.attempts.sum(),qb.completions.sum(),qb.passing_tds.sum(),qb.passing_interceptions.sum()]
         out.setdefault(t,{})[int(w)]=[int(round(a)) for a in v]
     return out
 de=agg('opponent_team'); of=agg('team')
 players={}
-s=d.groupby(['team','pos','player_id','player_display_name']).agg(g=('week','nunique'),ry=('rushing_yards','sum'),cy=('receiving_yards','sum'),c=('carries','sum'),rec=('receptions','sum'),tg=('targets','sum')).reset_index()
+s=d.groupby(['team','pos','player_id','player_display_name']).agg(g=('week','nunique'),ry=('rushing_yards','sum'),cy=('receiving_yards','sum'),c=('carries','sum'),rec=('receptions','sum'),tg=('targets','sum'),
+  py=('passing_yards','sum'),pa=('attempts','sum'),pc=('completions','sum'),ptd=('passing_tds','sum'),pint=('passing_interceptions','sum')).reset_index()
 s['tot']=s.ry+s.cy
 TODAY=DAYS[-1]
-_ros=pd.read_csv('ros.csv',low_memory=False); _ros=_ros[_ros.week==_ros.week.max()]
+_ros=pd.read_csv('ros.csv',low_memory=False); _ros=_ros[_ros.week==_ros.groupby('team').week.transform('max')]
 rname=dict(zip(_ros.gsis_id,_ros.full_name))
 for t in sorted(d.team.unique()):
     for po in ['QB','RB','WR','TE']:
@@ -91,16 +94,22 @@ for t in sorted(d.team.unique()):
         # depth-chart players with no stats for this team yet
         extra=[(pid,rk) for pid,rk in cur.items() if pid not in set(x.player_id) and rk<= {'QB':1,'RB':2,'WR':3,'TE':1}[po]]
         for pid,rk in extra:
-            x=pd.concat([x,pd.DataFrame([{'team':t,'pos':po,'player_id':pid,'player_display_name':rname.get(pid,pid),'g':0,'ry':0,'cy':0,'c':0,'rec':0,'tg':0,'tot':0,'dr':rk}])])
-        x=x.sort_values(['dr',{'WR':'tg','QB':'c'}.get(po,'tot')],ascending=[True,False]).head({'QB':3,'WR':7,'RB':5,'TE':4}[po])
-        players.setdefault(t,{})[po]=[[n,int(g),int(ry),int(cy),int(c),int(rec),int(tg),pid,int(dr)] for pid,n,g,ry,cy,c,rec,tg,dr in x[['player_id','player_display_name','g','ry','cy','c','rec','tg','dr']].values]
+            x=pd.concat([x,pd.DataFrame([{'team':t,'pos':po,'player_id':pid,'player_display_name':rname.get(pid,pid),'g':0,'ry':0,'cy':0,'c':0,'rec':0,'tg':0,'py':0,'pa':0,'pc':0,'ptd':0,'pint':0,'tot':0,'dr':rk}])])
+        x=x.sort_values(['dr',{'WR':'tg','QB':'pa'}.get(po,'tot')],ascending=[True,False]).head({'QB':3,'WR':7,'RB':5,'TE':4}[po])
+        # [name, games, rushYds, recYds, carries, rec, targets, id, depth, passYds, att, cmp, passTD, int]
+        players.setdefault(t,{})[po]=[[n,int(g),int(ry),int(cy),int(c),int(rec),int(tg),pid,int(dr),int(py),int(pa),int(pc),int(ptd),int(pint)]
+            for pid,n,g,ry,cy,c,rec,tg,dr,py,pa,pc,ptd,pint in x[['player_id','player_display_name','g','ry','cy','c','rec','tg','dr','py','pa','pc','ptd','pint']].values]
 # availability for current week
 gs=pd.read_csv('games.csv');gs=gs[(gs.season==SEASON)&(gs.game_type=='REG')]
 _left=gs[gs.home_score.isna()]
 CUR=int(_left.week.min()) if len(_left) else int(gs.week.max())
 inj=pd.read_csv('inj.csv'); inj=inj[(inj.week==CUR)&inj.report_status.notna()]
-ros=pd.read_csv('ros.csv',low_memory=False); ros=ros[ros.week==ros.week.max()]
+ros=pd.read_csv('ros.csv',low_memory=False)
+# nflverse's weekly roster file sometimes lags for a few teams, so use each team's own latest week
+ros=ros[ros.week==ros.groupby('team').week.transform('max')]
 rteam=dict(zip(ros.gsis_id,ros.team)); rstat=dict(zip(ros.gsis_id,ros.status))
+ROS_TEAMS=set(ros.team)
+ROS_CURRENT=set(ros[ros.week==ros.week.max()].team)  # teams whose roster is up to date
 istat=dict(zip(inj.gsis_id,inj.report_status)); iinj=dict(zip(inj.gsis_id,inj.report_primary_injury.fillna('')))
 status={}
 for t,P in players.items():
@@ -109,8 +118,8 @@ for t,P in players.items():
             pid=p[7]; st=None
             if rstat.get(pid)=='RES': st='IR'
             elif pid in rteam and rteam[pid]!=t: st='Traded'
-            elif rstat.get(pid) in ('CUT','RET') or pid not in rteam: st='Released'
-            elif rstat.get(pid) in ('INA','DEV','EXE','TRT'): st='Inactive'
+            elif rstat.get(pid) in ('CUT','RET') or (pid not in rteam and t in ROS_TEAMS): st='Released'
+            elif rstat.get(pid) in ('INA','DEV','EXE','TRT') and t in ROS_CURRENT: st='Inactive'
             if pid in istat and st not in ('IR','Traded','Released'): st=istat[pid]
             if st: status[pid]=[st,iinj.get(pid,'')]
 dinj={}
@@ -135,7 +144,9 @@ for (t,w),x in d.groupby(['opponent_team','week']):
     re=pd.concat([ot,ww.drop(columns='role')])
     re['o']=re.lab.map({'RB':0,'WR1':1,'WR2':2,'WR3+':3,'TE':4})
     re=re.sort_values(['o','receiving_yards'],ascending=[True,False])
+    pa=x[(x.pos=='QB')&(x.attempts>0)].sort_values('attempts',ascending=False)
     logr.setdefault(t,{})[int(w)]={
+      'pa':[[nm(r.player_name),int(r.attempts),int(r.completions),int(round(r.passing_yards)),int(r.passing_tds),int(r.passing_interceptions)] for r in pa.itertuples()],
       'ru':[[nm(r.player_name),r.pos,int(r.carries),int(round(r.rushing_yards)),int(r.rushing_tds)] for r in ru.itertuples()],
       're':[[nm(r.player_name),r.lab,int(r.targets),int(r.receptions),int(r.receiving_yards),int(r.receiving_tds)] for r in re.itertuples()]}
 data['logr']=logr
