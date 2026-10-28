@@ -232,6 +232,15 @@ li.outp b{text-decoration:line-through}
 table.cmp{min-width:0}
 table.cmp td:nth-child(2),table.cmp td:nth-child(3),table.cmp th:nth-child(2),table.cmp th:nth-child(3){text-align:right;width:28%}
 table.cmp td.better{color:var(--hot);font-weight:700}
+table.cmp td .hint{color:var(--muted);font-weight:400;font-size:.85em}
+table.sptab{min-width:0}
+table.sptab th,table.sptab td{text-align:right}
+table.sptab th.sp-n,table.sptab tbody td:first-child{text-align:left}
+table.sptab .ls{display:none}
+@media (max-width:560px){table.sptab th,table.sptab td{padding-left:6px;padding-right:6px}table.sptab td .hint{display:block}table.sptab .lf{display:none}table.sptab .ls{display:inline}}
+table.sptab td:nth-child(n+2),table.sptab th:nth-child(n+2){width:auto}
+table.sptab .sp-h{border-left:2px solid var(--line)}
+table.sptab td .rk{display:block;font:400 .75rem "Archivo Narrow","Arial Narrow",sans-serif;color:var(--muted)}
 table.cmp tr.grp td{background:var(--bg);font:700 .8rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
 table.cmp tr.key td{background:var(--hot-soft)}
 table.gsplit{min-width:0}
@@ -840,6 +849,11 @@ function renderNhlGame(id){
   const V=(v,t)=>({v,t:t??(v==null?'—':v)});
   const gpg=(t,s)=>nper(s?(t[s]||{}).gf:t.gf,s?(t[s]||{}).gp:t.gp), gapg=(t,s)=>nper(s?(t[s]||{}).ga:t.ga,s?(t[s]||{}).gp:t.gp);
   const st=x=>x.stats||{};
+  const sp=(t,k)=>((t.special||{})[k||'season'])||{};
+  const ppP=(t,k)=>k?sp(t,k).ppPct:(st(t).powerPlayPct??sp(t).ppPct), pkP=(t,k)=>k?sp(t,k).pkPct:(st(t).penaltyKillPct??sp(t).pkPct);
+  const pc=v=>v==null?'—':(v*100).toFixed(1)+'%';
+  const ppT=(t,k)=>{const v=ppP(t,k),x=sp(t,k);return v==null?'—':`${pc(v)}${x.ppo?` <span class="hint">${x.ppg}/${x.ppo}</span>`:''}`;};
+  const pkT=(t,k)=>{const v=pkP(t,k),x=sp(t,k);return v==null?'—':`${pc(v)}${x.tsh?` <span class="hint">${x.tsh-x.ppga}/${x.tsh}</span>`:''}`;};
   const otw=t=>t.rotw-t.rw-0, otl=t=>t.otl-(t.so?t.so.l:0);
   const cmp=`<div class="tablewrap"><table class="cmp"><thead><tr><th></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>
     <tr class="grp"><td colspan="3">Overall</td></tr>
@@ -860,13 +874,22 @@ function renderNhlGame(id){
     <tr class="grp"><td colspan="3">Road</td></tr>
     ${row('Road record',V(null,rec(A.road)),V(null,rec(H.road)))}
     ${row('Road GF / GA per game',V(null,`${f2(gpg(A,'road'))} / ${f2(gapg(A,'road'))}`),V(null,`${f2(gpg(H,'road'))} / ${f2(gapg(H,'road'))}`))}
-    <tr class="grp"><td colspan="3">Special teams and shots</td></tr>
-    ${row('Power play',V(st(A).powerPlayPct,npct(st(A).powerPlayPct)),V(st(H).powerPlayPct,npct(st(H).powerPlayPct)),'hi')}
-    ${row('Penalty kill',V(st(A).penaltyKillPct,npct(st(A).penaltyKillPct)),V(st(H).penaltyKillPct,npct(st(H).penaltyKillPct)),'hi')}
+    <tr class="grp"><td colspan="3">Shots and faceoffs</td></tr>
     ${row('Shots for / game',V(st(A).shotsForPerGame,f1(st(A).shotsForPerGame)),V(st(H).shotsForPerGame,f1(st(H).shotsForPerGame)),'hi')}
     ${row('Shots against / game',V(st(A).shotsAgainstPerGame,f1(st(A).shotsAgainstPerGame)),V(st(H).shotsAgainstPerGame,f1(st(H).shotsAgainstPerGame)),'lo')}
     ${row('Faceoff win %',V(st(A).faceoffWinPct,npct(st(A).faceoffWinPct)),V(st(H).faceoffWinPct,npct(st(H).faceoffWinPct)),'hi')}
     </tbody></table></div>`;
+  const SPS=[['<span class="lf">Power plays / game</span><span class="ls">PP / game</span>',(t,k)=>sp(t,k).ppoPg,'hi',(t,k,v)=>f1(v)],
+    ['<span class="lf">Power play %</span><span class="ls">PP %</span>',(t,k)=>ppP(t,k),'hi',(t,k,v)=>{const x=sp(t,k);return pc(v)+(x.ppo?` <span class="hint">${x.ppg}/${x.ppo}</span>`:'');}],
+    ['<span class="lf">Penalty kills / game</span><span class="ls">PK / game</span>',(t,k)=>sp(t,k).tshPg,'lo',(t,k,v)=>f1(v)],
+    ['<span class="lf">Penalty kill %</span><span class="ls">PK %</span>',(t,k)=>pkP(t,k),'hi',(t,k,v)=>{const x=sp(t,k);return pc(v)+(x.tsh?` <span class="hint">${x.tsh-x.ppga}/${x.tsh}</span>`:'');}]];
+  const ALL=Object.values(N.teams||{});
+  const rk=(fn,k,dir,v)=>{if(v==null) return '';const vs=ALL.map(t=>fn(t,k)).filter(x=>x!=null);const n=1+vs.filter(x=>dir==='hi'?x>v:x<v).length;const tie=vs.filter(x=>x===v).length>1;return `${tie?'T-':''}${ord(n)}`;};
+  const spCell=(t,k,r,cls)=>{const v=r[1](t,k);return `<td class="${cls}">${v==null?'—':r[3](t,k,v)}${v==null?'':`<span class="rk">${rk(r[1],k,r[2],v)}</span>`}</td>`;};
+  const spBody=SPS.map(r=>{const c=k=>{const av=r[1](A,k),hv=r[1](H,k);if(av==null||hv==null||av===hv) return ['',''];const aw=r[2]==='hi'?av>hv:av<hv;return aw?['better','']:['','better'];};
+    const l=c('last5'),se=c(null);return `<tr><td>${r[0]}</td>${spCell(A,'last5',r,l[0]+' sp-h')}${spCell(A,null,r,se[0])}${spCell(H,'last5',r,l[1]+' sp-h')}${spCell(H,null,r,se[1])}</tr>`;}).join('');
+  const spTable=`<div class="tablewrap"><table class="cmp sptab"><thead><tr><th rowspan="2" class="sp-n">Special teams</th><th colspan="2" class="sp-h">${g.away}</th><th colspan="2" class="sp-h">${g.home}</th></tr>
+    <tr><th class="sp-h">Last 5</th><th>Season</th><th class="sp-h">Last 5</th><th>Season</th></tr></thead><tbody>${spBody}</tbody></table></div>`;
   // last 7
   const l7=t=>{const L=t.last7||[];if(!L.length) return '<p class="hint">No games yet.</p>';
     const w=L.filter(x=>x.res==='W').length,l=L.filter(x=>x.res==='L').length,o=L.filter(x=>x.res==='OTL').length;
@@ -885,7 +908,7 @@ function renderNhlGame(id){
     <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
     <h2>Goalie splits &amp; game logs</h2><p class="sub">Each goalie’s home and road numbers this season, their last 5 games in tonight’s situation (road games for the visiting goalie, home games for the home goalie), then their last ${GLOG_N} appearances. The projected starter is shown first; switch goalies with the buttons.</p>
     <div id="glogs">${glogSection(g)}</div>
-    <h2>Team comparison</h2><p class="sub">Season numbers. The better side of each comparable stat is highlighted; shaded rows are the splits that apply tonight.</p>${cmp}
+    <h2>Team comparison</h2><p class="sub">Season numbers. The better side of each comparable stat is highlighted; shaded rows are the splits that apply tonight.</p>${cmp}<h3 class="logh">Special teams</h3><p class="sub">Last 5 games next to the full season, with each team’s NHL rank (1st to 32nd) under each number. Power plays per game are a team’s power-play chances; penalty kills per game are times shorthanded (fewer is better). The small numbers are goals out of chances and kills out of times shorthanded.</p>${spTable}
     <h2>Head-to-head</h2>${h2hSection(g)}
     <h2>Last 7 games</h2><div><h3 class="logh">${A.name}</h3>${l7(A)}</div><div><h3 class="logh">${H.name}</h3>${l7(H)}</div>
     <h2>Injuries</h2><div class="cols"><div class="gcard"><h3>${A.name}</h3>${injList(A)}</div><div class="gcard"><h3>${H.name}</h3>${injList(H)}</div></div>`;
