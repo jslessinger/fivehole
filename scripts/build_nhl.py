@@ -11,7 +11,7 @@ Sources (all free and public, no key):
 Run from the repository root:
     python scripts/build_nhl.py
 """
-import os, sys, json, time, base64, datetime, unicodedata, urllib.request, urllib.error
+import os, re, sys, json, time, base64, datetime, unicodedata, urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -712,12 +712,82 @@ try:
 except Exception as e:  # noqa: BLE001
     WARN.append(f'head-to-head skipped: {e!r}')
 
+# ------------------------------------------- power plays / penalty kills
+PP_NEW_MAX = 400   # cap new game lookups per run; finished games are cached in nhl.json
+PP_RE = re.compile(r'^\s*(\d+)\s*/\s*(\d+)\s*$')
+PP_CACHE = {}
+
+
+def _pp_from(stats_):
+    for c in stats_ or []:
+        cat = re.sub(r'[^a-z]', '', str(c.get('category') or '').lower())
+        if cat in ('powerplay', 'powerplays', 'pp'):
+            a, h = PP_RE.match(str(c.get('awayValue') or '')), PP_RE.match(str(c.get('homeValue') or ''))
+            if a and h:
+                return [int(a[1]), int(a[2]), int(h[1]), int(h[2])]
+    return None
+
+
+def pp_game(gid):
+    rr = get(f'{WEB}/gamecenter/{gid}/right-rail') or {}
+    v = _pp_from(rr.get('teamGameStats'))
+    if v is None:
+        ld = get(f'{WEB}/gamecenter/{gid}/landing') or {}
+        v = _pp_from((ld.get('summary') or {}).get('teamGameStats'))
+    return gid, v
+
+
+def build_special():
+    try:
+        old = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    except Exception:  # noqa: BLE001
+        old = {}
+    PP_CACHE.update({int(k): v for k, v in (old.get('ppCache') or {}).items() if isinstance(v, list) and len(v) == 4})
+    reg = {gid: g for gid, g in finals.items() if g.get('gameType') == 2}
+    want = sorted((gid for gid in reg if gid not in PP_CACHE), reverse=True)[:PP_NEW_MAX]
+    if want:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for gid, v in ex.map(pp_game, want):
+                if v:
+                    PP_CACHE[gid] = v
+    per = {ab: [] for ab in teams}
+    for gid, g in reg.items():
+        v = PP_CACHE.get(gid)
+        if not v:
+            continue
+        aw, hm = txt(g['awayTeam'].get('abbrev')), txt(g['homeTeam'].get('abbrev'))
+        when = g.get('startTimeUTC') or g.get('gameDate') or ''
+        if aw in per:
+            per[aw].append((when, v[0], v[1], v[2], v[3]))   # ppg, ppo, ppga, times shorthanded
+        if hm in per:
+            per[hm].append((when, v[2], v[3], v[0], v[1]))
+
+    def agg(rows_):
+        n = len(rows_)
+        ppg, ppo, ppga, tsh = (sum(r[i] for r in rows_) for i in range(1, 5))
+        return {'gp': n, 'ppg': ppg, 'ppo': ppo, 'ppga': ppga, 'tsh': tsh,
+                'ppoPg': round(ppo / n, 2) if n else None, 'tshPg': round(tsh / n, 2) if n else None,
+                'ppPct': round(ppg / ppo, 4) if ppo else None, 'pkPct': round(1 - ppga / tsh, 4) if tsh else None}
+    for ab, rows_ in per.items():
+        rows_.sort(reverse=True)
+        teams[ab]['special'] = {'season': agg(rows_), 'last5': agg(rows_[:5])}
+    missing = len([gid for gid in reg if gid not in PP_CACHE])
+    if missing:
+        WARN.append(f'power play data missing for {missing} finished games (filled in on later runs)')
+
+
+try:
+    build_special()
+except Exception as e:  # noqa: BLE001
+    WARN.append(f'special teams skipped: {e!r}')
+
 for g in games:
     if ICE['id'] and g.get('id') == ICE['id']:
         g['ice'] = True
 data = {
     'asOf': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),
     'season': season, 'teams': teams, 'games': games, 'warnings': WARN[:20], 'msf': MSF_STATUS,
+    'ppCache': {str(k): v for k, v in PP_CACHE.items()},
 }
 with open(OUT, 'w') as f:
     json.dump(data, f, separators=(',', ':'))
