@@ -224,18 +224,44 @@ def toi_min(v):
         return 0.0
 
 
+SPLIT_N = 5
+
+
+def split_of(rows_):
+    sp = {'gp': 0, 'gs': 0, 'w': 0, 'l': 0, 'otl': 0, 'sa': 0, 'ga': 0, 'min': 0.0, 'so': 0}
+    for r in rows_:
+        sp['gp'] += 1
+        sp['gs'] += r['gs']
+        d = r['dec']
+        sp['w'] += d == 'W'
+        sp['l'] += d == 'L'
+        sp['otl'] += d in ('O', 'OT', 'OTL', 'SO')
+        sp['sa'] += r['sa']
+        sp['ga'] += r['ga']
+        sp['min'] += r['min']
+        sp['so'] += r['so']
+    sp['min'] = round(sp['min'], 2)
+    sp['svp'] = round((sp['sa'] - sp['ga']) / sp['sa'], 4) if sp['sa'] else None
+    sp['gaa'] = round(sp['ga'] * 60 / sp['min'], 2) if sp['min'] else None
+    return sp
+
+
 def glog(pid):
     url = f'{WEB}/player/{pid}/game-log/{season}/2' if season else f'{WEB}/player/{pid}/game-log/now'
     rows_ = (get(url) or {}).get('gameLog') or []
     out = []
-    for r in rows_[:GLOG_N]:
+    for r in rows_:
         sa, ga = int(num(r.get('shotsAgainst'))), int(num(r.get('goalsAgainst')))
         out.append({'date': r.get('gameDate') or '', 'opp': txt(r.get('opponentAbbrev')),
                     'home': (r.get('homeRoadFlag') or '') == 'H', 'gs': int(num(r.get('gamesStarted'))),
                     'dec': r.get('decision') or '', 'sa': sa, 'ga': ga, 'sv': sa - ga,
                     'svp': num(r.get('savePctg'), (sa - ga) / sa if sa else 0), 'toi': r.get('toi') or '',
                     'min': round(toi_min(r.get('toi')), 2), 'so': int(num(r.get('shutouts'))), 'id': r.get('gameId')})
-    return pid, out
+    out.sort(key=lambda x: x['date'], reverse=True)
+    home = [x for x in out if x['home']]
+    road = [x for x in out if not x['home']]
+    return pid, {'log': out[:GLOG_N], 'splits': {'home': split_of(home), 'road': split_of(road)},
+                 'logHome': home[:SPLIT_N], 'logRoad': road[:SPLIT_N]}
 
 
 gids = [g['id'] for t in teams.values() for g in t['goalies'] if g.get('id')]
@@ -243,7 +269,12 @@ with ThreadPoolExecutor(max_workers=6) as ex:
     logs = dict(ex.map(glog, gids))
 for t in teams.values():
     for g in t['goalies']:
-        g['log'] = logs.get(g['id'], [])
+        lg = logs.get(g['id']) or {}
+        g['log'] = lg.get('log', [])
+        if lg.get('splits'):
+            g['splits'] = lg['splits']
+            g['logHome'] = lg['logHome']
+            g['logRoad'] = lg['logRoad']
 
 # -------------------------------------------------------------- injuries
 ESPN_STATUS = {'injured reserve': 'IR', 'out': 'Out', 'day-to-day': 'Day-to-day', 'suspension': 'Suspended',
