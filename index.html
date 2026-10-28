@@ -234,6 +234,11 @@ table.cmp td:nth-child(2),table.cmp td:nth-child(3),table.cmp th:nth-child(2),ta
 table.cmp td.better{color:var(--hot);font-weight:700}
 table.cmp tr.grp td{background:var(--bg);font:700 .8rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
 table.cmp tr.key td{background:var(--hot-soft)}
+table.gsplit{min-width:0}
+table.gsplit th:not(:first-child),table.gsplit td:not(:first-child){text-align:right}
+table.gsplit tr.key td{background:var(--hot-soft)}
+h4.glsub{margin:14px 0 6px;font:700 .82rem "Archivo Narrow","Arial Narrow",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+h4.glsub .hint{text-transform:none;letter-spacing:0;font-weight:400}
 table.l7 td:nth-child(n+3),table.l7 th:nth-child(n+3){text-align:right}
 table.l7{min-width:420px}
 .res-W{color:var(--hot);font-weight:700}
@@ -878,7 +883,7 @@ function renderNhlGame(id){
     <h2>Odds</h2><p class="sub">The current line shown on ESPN for this game.</p>${oddsSection(g)}
     <h2>Goalies</h2><p class="sub"><b>Confirmed</b>: named the starter in the NHL’s official game lineup (filed about 20–30 minutes before puck drop) or has started the game. <b>Expected</b>: listed as the probable starter by ESPN or from reports. Starters reported by teams or reporters can also be entered on Five Hole as Confirmed or Expected. <b>Projected</b>: Five Hole’s own pick from recent starts, back-to-backs and injuries, used until something firmer is available.</p>
     <div class="cols">${gcard(g.away,'away')}${gcard(g.home,'home')}</div>
-    <h2>Goalie game logs</h2><p class="sub">Each goalie’s last ${GLOG_N} appearances this season. The projected starter is shown first; switch goalies with the buttons.</p>
+    <h2>Goalie splits &amp; game logs</h2><p class="sub">Each goalie’s home and road numbers this season, their last 5 games in tonight’s situation (road games for the visiting goalie, home games for the home goalie), then their last ${GLOG_N} appearances. The projected starter is shown first; switch goalies with the buttons.</p>
     <div id="glogs">${glogSection(g)}</div>
     <h2>Team comparison</h2><p class="sub">Season numbers. The better side of each comparable stat is highlighted; shaded rows are the splits that apply tonight.</p>${cmp}
     <h2>Head-to-head</h2>${h2hSection(g)}
@@ -926,6 +931,25 @@ function oddsSection(g){
 }
 
 const GLOG_N=10; let GLSEL={};
+const decTxt=d=>d==='O'?'OTL':d;
+function splitOf(R){const s={gp:0,gs:0,w:0,l:0,otl:0,sa:0,ga:0,min:0,so:0};
+  R.forEach(x=>{s.gp++;s.gs+=x.gs?1:0;s.w+=x.dec==='W';s.l+=x.dec==='L';s.otl+=['O','OT','OTL','SO'].includes(x.dec);s.sa+=x.sa;s.ga+=x.ga;s.min+=x.min||0;s.so+=x.so||0;});
+  s.svp=s.sa?(s.sa-s.ga)/s.sa:null;s.gaa=s.min?s.ga*60/s.min:null;return s;}
+function glogTable(L,foot){
+  return `<div class="tablewrap"><table class="l7"><thead><tr><th>Date</th><th>Opp</th><th>Role</th><th>Dec</th><th>GA</th><th>Saves</th><th>SV%</th><th>TOI</th></tr></thead><tbody>${L.map(x=>`<tr><td>${dLabel(x.date)}</td><td>${x.home?'vs':'@'} ${x.opp}</td><td>${x.gs?'Start':'<span class="hint">Relief</span>'}</td><td><span class="res-${x.dec==='W'?'W':'L'}">${decTxt(x.dec)||'—'}</span></td><td>${x.ga}${x.so?' <span class="chip chip-confirmed">SO</span>':''}</td><td>${x.sv}/${x.sa}</td><td>${svp(x.svp)}</td><td>${x.toi}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="4">${foot}</td><td colspan="4">${(()=>{const s=splitOf(L);return s.sa?`${svp(s.svp)} SV% · ${f2(s.gaa||0)} GAA · ${s.w}-${s.l}-${s.otl}`:'—';})()}</td></tr></tfoot></table></div>`;
+}
+function splitSection(gl,key){
+  const full=!!gl.splits; const L=gl.log||[];
+  const S=full?gl.splits:{home:splitOf(L.filter(x=>x.home)),road:splitOf(L.filter(x=>!x.home))};
+  const row=(k,lab)=>{const x=S[k]||{};const on=(k==='home')===(key==='home');
+    return `<tr class="${on?'key':''}"><td><b>${lab}</b>${on?' <span class="hint">· tonight</span>':''}</td><td>${x.gp||0}</td><td>${x.gs||0}</td><td>${x.w||0}-${x.l||0}-${x.otl||0}</td><td>${x.gaa==null?'—':f2(x.gaa)}</td><td>${x.svp==null?'—':svp(x.svp)}</td><td>${x.so||0}</td></tr>`;};
+  const tbl=`<div class="tablewrap"><table class="gsplit"><thead><tr><th>Split</th><th>GP</th><th>GS</th><th>W-L-OTL</th><th>GAA</th><th>SV%</th><th>SO</th></tr></thead><tbody>${row('home','Home')}${row('road','Road')}</tbody></table></div>${full?'':'<p class="hint" style="margin:4px 0 0">Based on the last '+L.length+' appearances only until the next data refresh.</p>'}`;
+  const sit=key==='home'?'home':'road';
+  const S5=(full?(sit==='home'?gl.logHome:gl.logRoad):L.filter(x=>x.home===(sit==='home'))).slice(0,5);
+  const h=`<h4 class="glsub">Last ${S5.length||5} ${sit} game${S5.length===1?'':'s'} <span class="hint">— tonight’s situation</span></h4>`;
+  return `<h4 class="glsub">Home / road splits <span class="hint">— this season</span></h4>${tbl}${h}${S5.length?glogTable(S5,`Last ${S5.length} ${sit}`):`<p class="hint">No ${sit} appearances this season.</p>`}`;
+}
 function glogSection(g){
   return ['away','home'].map(key=>{const ab=g[key];const t=nT(ab);const p=(g.goalies||{})[key];
     const list=[...(t.goalies||[])].sort((a,b)=>(p&&b.id===p.id)-(p&&a.id===p.id)||b.gs-a.gs);
@@ -933,12 +957,8 @@ function glogSection(g){
     const sel=GLSEL[key]&&list.some(x=>x.id===GLSEL[key])?GLSEL[key]:list[0].id;
     const gl=list.find(x=>x.id===sel); const L=gl.log||[];
     const tabs=list.map(x=>`<button type="button" data-glt="${key}:${x.id}" aria-pressed="${x.id===sel}">${x.name}${p&&x.id===p.id?' · projected':''}</button>`).join('');
-    const starts=L.filter(x=>x.gs).slice(0,5);
-    const s5=starts.reduce((a,x)=>({sa:a.sa+x.sa,ga:a.ga+x.ga,m:a.m+x.min}),{sa:0,ga:0,m:0});
-    const decTxt=d=>d==='O'?'OTL':d;
-    const body=L.length?`<div class="tablewrap"><table class="l7"><thead><tr><th>Date</th><th>Opp</th><th>Role</th><th>Dec</th><th>GA</th><th>Saves</th><th>SV%</th><th>TOI</th></tr></thead><tbody>${L.map(x=>`<tr><td>${dLabel(x.date)}</td><td>${x.home?'vs':'@'} ${x.opp}</td><td>${x.gs?'Start':'<span class="hint">Relief</span>'}</td><td><span class="res-${x.dec==='W'?'W':'L'}">${decTxt(x.dec)||'—'}</span></td><td>${x.ga}${x.so?' <span class="chip chip-confirmed">SO</span>':''}</td><td>${x.sv}/${x.sa}</td><td>${svp(x.svp)}</td><td>${x.toi}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td colspan="4">Last ${starts.length} start${starts.length===1?'':'s'}</td><td colspan="4">${s5.sa?`${svp((s5.sa-s5.ga)/s5.sa)} SV% · ${f2(s5.m?s5.ga*60/s5.m:0)} GAA`:'—'}</td></tr></tfoot></table></div>`:'<p class="hint">No NHL appearances this season.</p>';
-    return `<div class="glog-team"><h3 class="logh">${t.name}</h3><div class="seg">${tabs}</div>${body}</div>`;}).join('');
+    const body=L.length?`${splitSection(gl,key)}<h4 class="glsub">Last ${L.length} appearance${L.length===1?'':'s'} <span class="hint">— home and road</span></h4>${glogTable(L,`Last ${L.length}`)}`:'<p class="hint">No NHL appearances this season.</p>';
+    return `<div class="glog-team"><h3 class="logh">${t.name} <span class="hint">· ${key==='home'?'home':'road'} tonight</span></h3><div class="seg">${tabs}</div>${body}</div>`;}).join('');
 }
 
 function openNhlGame(id){ NGID=id; GLSEL={}; show('nhlGame'); }
