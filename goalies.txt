@@ -10,3 +10,4 @@
 2026-11-19 PHI Joseph Woll expected
 2026-11-19 NYI Semyon Varlamov expected
 ICE 2026020392 PHI@WSH 2026-11-25
+2026-11-25 MTL Jacob Fowler confirmed
