@@ -13,3 +13,4 @@ ICE 2026020392 PHI@WSH 2026-11-25
 2026-11-25 MTL Jacob Fowler confirmed
 2026-11-27 NJD Jake Allen expected
 2026-11-27 NYI Semyon Varlamov expected
+2026-11-27 BUF Ukko-Pekka Luukkonen expected
